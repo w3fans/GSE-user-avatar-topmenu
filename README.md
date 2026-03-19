@@ -2,6 +2,7 @@
 
 GNOME Shell extension that shows the current username with avatar in the top bar.
 It can optionally append the computer name, so the label becomes `John at myPC`.
+Current project version is stored in `VERSION`.
 
 ## Files
 
@@ -34,7 +35,33 @@ gnome-extensions pack --force --out-dir . --extra-source prefs.js --schema schem
 
 That creates a zip you can install locally or upload later.
 
+## Release
+
+Patch release:
+
+```bash
+./release.sh
+```
+
+Minor or major release:
+
+```bash
+./release.sh 0.1.0 "Release v0.1.0"
+./release.sh 1.0.0 "Release v1.0.0"
+```
+
+What `release.sh` does:
+
+- bumps `VERSION`
+- increments `metadata.json` `version`
+- recompiles schemas
+- rebuilds the extension zip
+- commits the release
+- creates a tag like `v0.0.2`
+- pushes the branch and the tag
+
 ## Notes for listing
 
+- A public GitHub repository is a good project home before adding a website later.
 - Before submitting to extensions.gnome.org, change the UUID to one you control.
 - Reviewers expect production-ready metadata, screenshots, and clean behavior.
