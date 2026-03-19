@@ -1,5 +1,5 @@
 {
-  "uuid": "username-avatar@local.testing",
+  "uuid": "user-avatar-topmenu@basing.si",
   "name": "Username Avatar Top Menu",
   "description": "Shows the current username with avatar in the GNOME top bar.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",

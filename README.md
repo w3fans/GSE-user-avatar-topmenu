@@ -15,15 +15,15 @@ Current project version is stored in `VERSION`.
 ## Local install
 
 1. Create the extension directory:
-   `~/.local/share/gnome-shell/extensions/username-avatar@local.testing`
+   `~/.local/share/gnome-shell/extensions/user-avatar-topmenu@basing.si`
 2. Copy `metadata.json`, `extension.js`, `prefs.js`, `stylesheet.css`, and the `schemas` directory into that directory.
 3. Compile the schema:
-   `glib-compile-schemas ~/.local/share/gnome-shell/extensions/username-avatar@local.testing/schemas`
+   `glib-compile-schemas ~/.local/share/gnome-shell/extensions/user-avatar-topmenu@basing.si/schemas`
 4. Restart GNOME Shell or log out and back in.
 5. Enable the extension:
-   `gnome-extensions enable username-avatar@local.testing`
+   `gnome-extensions enable user-avatar-topmenu@basing.si`
 6. Open preferences:
-   `gnome-extensions prefs username-avatar@local.testing`
+   `gnome-extensions prefs user-avatar-topmenu@basing.si`
 
 ## Package
 
@@ -63,5 +63,5 @@ What `release.sh` does:
 ## Notes for listing
 
 - A public GitHub repository is a good project home before adding a website later.
-- Before submitting to extensions.gnome.org, change the UUID to one you control.
+- The UUID is now domain-based for publishing: `user-avatar-topmenu@basing.si`.
 - Reviewers expect production-ready metadata, screenshots, and clean behavior.
