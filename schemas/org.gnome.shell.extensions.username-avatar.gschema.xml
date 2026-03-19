@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.username-avatar"
+          path="/org/gnome/shell/extensions/username-avatar/">
+    <key name="show-hostname" type="b">
+      <default>false</default>
+      <summary>Show computer name in the panel label</summary>
+      <description>
+        When enabled, the panel label appends the local hostname after the account name.
+      </description>
+    </key>
+  </schema>
+</schemalist>
