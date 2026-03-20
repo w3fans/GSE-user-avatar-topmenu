@@ -5,12 +5,6 @@
 .user-topmenu-avatar-frame {
     width: 24px;
     height: 24px;
-    border-radius: 999px;
-    background-color: rgba(255, 255, 255, 0.08);
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: cover;
-    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .user-topmenu-avatar {
@@ -19,8 +13,6 @@
 
 .user-topmenu-host-box {
     spacing: 3px;
-    min-width: 12px;
-    max-width: 96px;
 }
 
 .user-topmenu-host-icon {
@@ -28,8 +20,6 @@
 }
 
 .user-topmenu-host-label {
-    font-size: 14px;
-    max-width: 84px;
 }
 
 .user-topmenu-state-icon {

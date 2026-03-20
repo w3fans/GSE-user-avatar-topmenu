@@ -380,7 +380,9 @@ export default class UsernameAvatarExtension extends Extension {
         this._quickSettingsItem.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         this._quickSettingsItem.menu.addAction('Open Preferences', () => {
-            this.openPreferences();
+            this.openPreferences().catch(error => {
+                console.error(`Failed to open preferences: ${error.message}`);
+            });
         });
         this._quickSettingsItem.menu.addAction('Log Out', () => {
             Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
