@@ -62,7 +62,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const keepAwakeRow = new Adw.SwitchRow({
             title: 'Block screen saver',
-            subtitle: 'Shows a sun icon in the panel while active.',
+            subtitle: 'Shows a colored sun icon in the panel while active and also appears in the user submenu.',
         });
         settings.bind(
             'keep-awake',

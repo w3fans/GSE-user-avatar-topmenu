@@ -28,19 +28,7 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        this._avatar = new St.Icon({
-            gicon: this._getAvatarIcon(this._userName),
-            style_class: 'user-topmenu-avatar',
-            icon_size: AVATAR_SIZE,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._avatarFrame = new St.Bin({
-            style_class: 'user-topmenu-avatar-frame',
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-            clip_to_allocation: true,
-            child: this._avatar,
-        });
+        this._avatarFrame = this._createAvatarActor(this._userName);
 
         this._label = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
@@ -49,11 +37,6 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._hostnameIcon = new St.Icon({
             icon_name: 'computer-symbolic',
             style_class: 'user-topmenu-host-icon',
-            visible: false,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._hostnameLabel = new St.Label({
-            style_class: 'user-topmenu-host-label',
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -68,7 +51,6 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
         this._box.add_child(this._hostnameIcon);
-        this._box.add_child(this._hostnameLabel);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -114,13 +96,33 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._syncTopBarState();
     }
 
-    _getAvatarIcon(userName) {
+    _createAvatarActor(userName) {
         const avatarPath = `/var/lib/AccountsService/icons/${userName}`;
 
-        if (GLib.file_test(avatarPath, GLib.FileTest.EXISTS))
-            return new Gio.FileIcon({file: Gio.File.new_for_path(avatarPath)});
+        if (GLib.file_test(avatarPath, GLib.FileTest.EXISTS)) {
+            return new St.Bin({
+                style_class: 'user-topmenu-avatar-frame',
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER,
+                style: `
+                    background-image: url("file://${avatarPath}");
+                    background-size: cover;
+                    background-position: center;
+                `,
+            });
+        }
 
-        return new Gio.ThemedIcon({name: 'avatar-default-symbolic'});
+        return new St.Bin({
+            style_class: 'user-topmenu-avatar-frame',
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+            child: new St.Icon({
+                gicon: new Gio.ThemedIcon({name: 'avatar-default-symbolic'}),
+                style_class: 'user-topmenu-avatar',
+                icon_size: AVATAR_SIZE,
+                y_align: Clutter.ActorAlign.CENTER,
+            }),
+        });
     }
 
     _getDisplayName() {
@@ -142,8 +144,6 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._label.set_text(displayName);
         this._hostnameIcon.visible = showHostname;
-        this._hostnameLabel.visible = showHostname;
-        this._hostnameLabel.set_text(this._hostname);
         this._nameItem.label.set_text(this._buildLabel());
     }
 
@@ -157,6 +157,10 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         if (this._keepAwakeItem.state !== keepAwake)
             this._keepAwakeItem.setToggleState(keepAwake);
+
+        this._keepAwakeItem.label.remove_style_pseudo_class('active');
+        if (keepAwake)
+            this._keepAwakeItem.label.add_style_pseudo_class('active');
     }
 
     _syncTopBarState() {
@@ -319,6 +323,16 @@ export default class UsernameAvatarExtension extends Extension {
         this._quickSettingsItem = new PopupMenu.PopupSubMenuMenuItem(this._getDisplayName(), true);
         this._quickSettingsItem.icon.icon_name = 'avatar-default-symbolic';
 
+        this._quickKeepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
+            'Keep awake',
+            this._settings.get_boolean('keep-awake')
+        );
+        this._quickKeepAwakeToggledId = this._quickKeepAwakeItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('keep-awake', state);
+        });
+        this._quickSettingsItem.menu.addMenuItem(this._quickKeepAwakeItem);
+        this._quickSettingsItem.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
         this._quickSettingsItem.menu.addAction('Open Preferences', () => {
             this.openPreferences();
         });
@@ -333,11 +347,20 @@ export default class UsernameAvatarExtension extends Extension {
 
     _refreshQuickSettingsMenu() {
         this._quickSettingsItem?.label.set_text(this._getDisplayName());
+        if (this._quickKeepAwakeItem &&
+            this._quickKeepAwakeItem.state !== this._settings.get_boolean('keep-awake'))
+            this._quickKeepAwakeItem.setToggleState(this._settings.get_boolean('keep-awake'));
     }
 
     _removeQuickSettingsMenu() {
+        if (this._quickKeepAwakeToggledId) {
+            this._quickKeepAwakeItem.disconnect(this._quickKeepAwakeToggledId);
+            this._quickKeepAwakeToggledId = null;
+        }
+
         this._quickSettingsItem?.destroy();
         this._quickSettingsItem = null;
+        this._quickKeepAwakeItem = null;
         this._quickSettingsSeparator?.destroy();
         this._quickSettingsSeparator = null;
     }

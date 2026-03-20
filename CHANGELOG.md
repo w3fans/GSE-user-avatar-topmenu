@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4
+
+- Made the top-bar hostname mode more compact by using the computer icon without adding a long extra text segment
+- Moved the avatar rendering toward a circular, login-style presentation
+- Added a keep-awake switch to the user submenu in the top-right menu
+- Kept the top bar hidden when `Show in top bar` is disabled while preserving the user submenu
+
 ## 0.2.3
 
 - Expanded declared GNOME Shell compatibility to versions 45 through 49
