@@ -23,5 +23,12 @@
         When enabled, the panel item is placed after the Apps and Places menus if they are loaded.
       </description>
     </key>
+    <key name="show-topbar" type="b">
+      <default>true</default>
+      <summary>Show the extension in the top bar</summary>
+      <description>
+        When disabled, the quick settings menu entry remains available but the panel item is hidden.
+      </description>
+    </key>
   </schema>
 </schemalist>

@@ -39,8 +39,21 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const showTopBarRow = new Adw.SwitchRow({
+            title: 'Show in top bar',
+            subtitle: 'Disable this if you only want the quick settings menu entry.',
+        });
+
+        settings.bind(
+            'show-topbar',
+            showTopBarRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         group.add(showHostRow);
         group.add(placeAfterNavigationRow);
+        group.add(showTopBarRow);
         page.add(group);
 
         const awakeGroup = new Adw.PreferencesGroup({

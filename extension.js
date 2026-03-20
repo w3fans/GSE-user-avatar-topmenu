@@ -34,8 +34,27 @@ class UserTopMenuButton extends PanelMenu.Button {
             icon_size: AVATAR_SIZE,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._avatarFrame = new St.Bin({
+            style_class: 'user-topmenu-avatar-frame',
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+            clip_to_allocation: true,
+            child: this._avatar,
+        });
 
         this._label = new St.Label({
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        this._hostnameIcon = new St.Icon({
+            icon_name: 'computer-symbolic',
+            style_class: 'user-topmenu-host-icon',
+            visible: false,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._hostnameLabel = new St.Label({
+            style_class: 'user-topmenu-host-label',
+            visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -46,8 +65,10 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        this._box.add_child(this._avatar);
+        this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
+        this._box.add_child(this._hostnameIcon);
+        this._box.add_child(this._hostnameLabel);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -68,16 +89,29 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._keepAwakeItem);
 
+        this._showTopBarItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show in top bar',
+            this._settings.get_boolean('show-topbar')
+        );
+        this._showTopBarToggledId = this._showTopBarItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-topbar', state);
+        });
+        this.menu.addMenuItem(this._showTopBarItem);
+
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'show-hostname')
                 this._refreshLabel();
 
             if (key === 'keep-awake')
                 this._syncKeepAwakeState();
+
+            if (key === 'show-topbar')
+                this._syncTopBarState();
         });
 
         this._refreshLabel();
         this._syncKeepAwakeState();
+        this._syncTopBarState();
     }
 
     _getAvatarIcon(userName) {
@@ -97,23 +131,39 @@ class UserTopMenuButton extends PanelMenu.Button {
         let label = this._getDisplayName();
 
         if (this._settings.get_boolean('show-hostname'))
-            label += ` at ${this._hostname}`;
+            label += ` on ${this._hostname}`;
 
         return label;
     }
 
     _refreshLabel() {
-        const label = this._buildLabel();
-        this._label.set_text(label);
-        this._nameItem.label.set_text(label);
+        const displayName = this._getDisplayName();
+        const showHostname = this._settings.get_boolean('show-hostname');
+
+        this._label.set_text(displayName);
+        this._hostnameIcon.visible = showHostname;
+        this._hostnameLabel.visible = showHostname;
+        this._hostnameLabel.set_text(this._hostname);
+        this._nameItem.label.set_text(this._buildLabel());
     }
 
     _syncKeepAwakeState() {
         const keepAwake = this._settings.get_boolean('keep-awake');
         this._stateIcon.visible = keepAwake;
+        this._stateIcon.remove_style_pseudo_class('active');
+
+        if (keepAwake)
+            this._stateIcon.add_style_pseudo_class('active');
 
         if (this._keepAwakeItem.state !== keepAwake)
             this._keepAwakeItem.setToggleState(keepAwake);
+    }
+
+    _syncTopBarState() {
+        const showTopBar = this._settings.get_boolean('show-topbar');
+
+        if (this._showTopBarItem.state !== showTopBar)
+            this._showTopBarItem.setToggleState(showTopBar);
     }
 
     destroy() {
@@ -125,6 +175,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         if (this._keepAwakeToggledId) {
             this._keepAwakeItem.disconnect(this._keepAwakeToggledId);
             this._keepAwakeToggledId = null;
+        }
+
+        if (this._showTopBarToggledId) {
+            this._showTopBarItem.disconnect(this._showTopBarToggledId);
+            this._showTopBarToggledId = null;
         }
 
         super.destroy();
@@ -143,6 +198,9 @@ export default class UsernameAvatarExtension extends Extension {
 
             if (key === 'show-hostname')
                 this._refreshQuickSettingsMenu();
+
+            if (key === 'show-topbar')
+                this._rebuildButton();
         });
 
         this._rebuildButton();
@@ -165,6 +223,11 @@ export default class UsernameAvatarExtension extends Extension {
 
     _rebuildButton() {
         this._button?.destroy();
+        this._button = null;
+
+        if (!this._settings.get_boolean('show-topbar'))
+            return;
+
         this._button = new UserTopMenuButton(this._settings);
         Main.panel.addToStatusArea(this.uuid, this._button, this._getPanelPosition(), 'left');
     }
@@ -244,14 +307,7 @@ export default class UsernameAvatarExtension extends Extension {
     _getDisplayName() {
         const realName = GLib.get_real_name();
         const userName = GLib.get_user_name();
-        const hostname = GLib.get_host_name();
-
-        let label = realName && realName !== 'Unknown' ? realName : userName;
-
-        if (this._settings.get_boolean('show-hostname'))
-            label += ` at ${hostname}`;
-
-        return label;
+        return realName && realName !== 'Unknown' ? realName : userName;
     }
 
     _addQuickSettingsMenu() {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+- Added circular avatar styling in the top bar
+- Replaced the textual `at` hostname join with a computer icon plus hostname label
+- Added a `Show in top bar` toggle to hide the panel item while keeping the quick settings entry
+- Kept the quick settings submenu label compact by showing just the user name
+
 ## 0.2.1
 
 - Added a top-right quick settings submenu with the user name

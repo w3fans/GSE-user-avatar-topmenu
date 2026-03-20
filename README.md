@@ -6,10 +6,12 @@ It can optionally append the computer name, keep the session awake, and add a qu
 ## Features
 
 - Show avatar and display name in the left side of the top bar
-- Optionally show the hostname, for example `Denis at kvf`
+- Circular avatar styling inspired by the login screen
+- Optionally show the hostname with a computer icon
 - Optional placement after `Apps` and `Places`
 - Keep-awake toggle with a visible active-state icon
 - Quick settings submenu on the top right with the user name, `Open Preferences`, and `Log Out`
+- Optional `Show in top bar` toggle so the quick settings entry can stay available on its own
 - Preferences window with author, license, description, and installed version
 
 ## Project
