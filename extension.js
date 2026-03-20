@@ -1,5 +1,6 @@
 import St from 'gi://St';
 import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 
@@ -10,6 +11,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
 
+const UserTopMenuButton = GObject.registerClass(
 class UserTopMenuButton extends PanelMenu.Button {
     constructor(settings) {
         super(0.0, 'Username Avatar Top Menu', false);
@@ -88,7 +90,7 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         super.destroy();
     }
-}
+});
 
 export default class UsernameAvatarExtension extends Extension {
     enable() {
