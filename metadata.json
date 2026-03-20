@@ -4,7 +4,7 @@
   "description": "Shows the current username with avatar in the GNOME top bar.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 8,
+  "version": 9,
   "shell-version": [
     "49"
   ]
