@@ -18,11 +18,16 @@
 }
 
 .user-topmenu-host-box {
-    width: 12px;
+    spacing: 3px;
+    max-width: 7em;
 }
 
 .user-topmenu-host-icon {
     icon-size: 12px;
+}
+
+.user-topmenu-host-label {
+    font-size: 0.9em;
 }
 
 .user-topmenu-state-icon {

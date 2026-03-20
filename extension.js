@@ -45,6 +45,11 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._hostnameBox.add_child(this._hostnameIcon);
+        this._hostnameLabel = new St.Label({
+            style_class: 'user-topmenu-host-label',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._hostnameBox.add_child(this._hostnameLabel);
 
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
@@ -84,6 +89,15 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._settings.set_boolean('show-topbar', state);
         });
         this.menu.addMenuItem(this._showTopBarItem);
+
+        this._showHostnameItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show computer name',
+            this._settings.get_boolean('show-hostname')
+        );
+        this._showHostnameToggledId = this._showHostnameItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-hostname', state);
+        });
+        this.menu.addMenuItem(this._showHostnameItem);
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'show-hostname')
@@ -149,7 +163,11 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._label.set_text(displayName);
         this._hostnameBox.opacity = showHostname ? 255 : 0;
+        this._hostnameLabel.set_text(this._hostname);
         this._nameItem.label.set_text(this._buildLabel());
+
+        if (this._showHostnameItem.state !== showHostname)
+            this._showHostnameItem.setToggleState(showHostname);
     }
 
     _syncKeepAwakeState() {
@@ -189,6 +207,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         if (this._showTopBarToggledId) {
             this._showTopBarItem.disconnect(this._showTopBarToggledId);
             this._showTopBarToggledId = null;
+        }
+
+        if (this._showHostnameToggledId) {
+            this._showHostnameItem.disconnect(this._showHostnameToggledId);
+            this._showHostnameToggledId = null;
         }
 
         super.destroy();
@@ -336,6 +359,24 @@ export default class UsernameAvatarExtension extends Extension {
             this._settings.set_boolean('keep-awake', state);
         });
         this._quickSettingsItem.menu.addMenuItem(this._quickKeepAwakeItem);
+
+        this._quickShowHostnameItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show computer name',
+            this._settings.get_boolean('show-hostname')
+        );
+        this._quickShowHostnameToggledId = this._quickShowHostnameItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-hostname', state);
+        });
+        this._quickSettingsItem.menu.addMenuItem(this._quickShowHostnameItem);
+
+        this._quickShowTopBarItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show in top bar',
+            this._settings.get_boolean('show-topbar')
+        );
+        this._quickShowTopBarToggledId = this._quickShowTopBarItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-topbar', state);
+        });
+        this._quickSettingsItem.menu.addMenuItem(this._quickShowTopBarItem);
         this._quickSettingsItem.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         this._quickSettingsItem.menu.addAction('Open Preferences', () => {
@@ -351,10 +392,27 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _refreshQuickSettingsMenu() {
+        const keepAwake = this._settings.get_boolean('keep-awake');
+        const showHostname = this._settings.get_boolean('show-hostname');
+        const showTopBar = this._settings.get_boolean('show-topbar');
+
         this._quickSettingsItem?.label.set_text(this._getDisplayName());
-        if (this._quickKeepAwakeItem &&
-            this._quickKeepAwakeItem.state !== this._settings.get_boolean('keep-awake'))
-            this._quickKeepAwakeItem.setToggleState(this._settings.get_boolean('keep-awake'));
+        this._quickSettingsItem?.remove_style_pseudo_class('active');
+        this._quickSettingsItem?.icon.remove_style_pseudo_class('active');
+
+        if (showTopBar) {
+            this._quickSettingsItem?.add_style_pseudo_class('active');
+            this._quickSettingsItem?.icon.add_style_pseudo_class('active');
+        }
+
+        if (this._quickKeepAwakeItem && this._quickKeepAwakeItem.state !== keepAwake)
+            this._quickKeepAwakeItem.setToggleState(keepAwake);
+
+        if (this._quickShowHostnameItem && this._quickShowHostnameItem.state !== showHostname)
+            this._quickShowHostnameItem.setToggleState(showHostname);
+
+        if (this._quickShowTopBarItem && this._quickShowTopBarItem.state !== showTopBar)
+            this._quickShowTopBarItem.setToggleState(showTopBar);
     }
 
     _removeQuickSettingsMenu() {
@@ -363,9 +421,21 @@ export default class UsernameAvatarExtension extends Extension {
             this._quickKeepAwakeToggledId = null;
         }
 
+        if (this._quickShowHostnameToggledId) {
+            this._quickShowHostnameItem.disconnect(this._quickShowHostnameToggledId);
+            this._quickShowHostnameToggledId = null;
+        }
+
+        if (this._quickShowTopBarToggledId) {
+            this._quickShowTopBarItem.disconnect(this._quickShowTopBarToggledId);
+            this._quickShowTopBarToggledId = null;
+        }
+
         this._quickSettingsItem?.destroy();
         this._quickSettingsItem = null;
         this._quickKeepAwakeItem = null;
+        this._quickShowHostnameItem = null;
+        this._quickShowTopBarItem = null;
         this._quickSettingsSeparator?.destroy();
         this._quickSettingsSeparator = null;
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.8
+
+- Restored hostname text next to the computer icon in the top bar
+- Added `Show computer name` and `Show in top bar` toggles to both the left user menu and the right user submenu
+- Highlighted the right-side user submenu when the top-bar user item is enabled
+- Updated `release.sh` to always place a versioned release ZIP in `dist/`
+
 ## 0.2.7
 
 - Stabilized the computer-name indicator layout so enabling it no longer changes the top-bar structure

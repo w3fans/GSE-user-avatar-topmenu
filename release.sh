@@ -123,6 +123,10 @@ git add "$version_file" "$metadata_file" "$schema_xml"
 git add prefs.js extension.js stylesheet.css README.md CHANGELOG.md .gitignore
 
 git commit -m "chore(release): ${tag}"
+
+mkdir -p dist
+cp "$bundle" "dist/${uuid}-${tag}.shell-extension.zip"
+
 git tag -a "$tag" -m "$msg"
 git push
 git push origin "$tag"
@@ -130,3 +134,4 @@ git push origin "$tag"
 echo "Released ${tag}"
 echo "VERSION: ${current} -> ${next}"
 echo "metadata version: ${metadata_version_before} -> ${metadata_version_after}"
+echo "Release zip: dist/${uuid}-${tag}.shell-extension.zip"

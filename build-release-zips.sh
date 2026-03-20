@@ -17,8 +17,7 @@ repo_root="$(pwd)"
 mkdir -p "${repo_root}/dist"
 
 if [[ $# -eq 0 ]]; then
-  set -- v0.2.6
-#  set -- v0.2.0 v0.2.1 v0.2.2 v0.2.3 v0.2.4
+  set -- v0.2.0 v0.2.1 v0.2.2 v0.2.3 v0.2.4 v0.2.5 v0.2.6 v0.2.7
 fi
 
 tmp_root="$(mktemp -d)"
