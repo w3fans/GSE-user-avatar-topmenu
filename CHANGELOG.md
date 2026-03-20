@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.6
+
+- Kept the top-bar computer-name indicator compact by showing the PC icon without expanding the top-bar text width
+- Extended the About page description and author line
+
 ## 0.2.5
 
 - Restored a clearly visible computer-name display in the top bar with icon plus hostname text

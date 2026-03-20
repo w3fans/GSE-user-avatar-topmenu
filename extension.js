@@ -151,7 +151,7 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._label.set_text(displayName);
         this._hostnameIcon.visible = showHostname;
-        this._hostnameLabel.visible = showHostname;
+        this._hostnameLabel.visible = false;
         this._hostnameLabel.set_text(this._hostname);
         this._nameItem.label.set_text(this._buildLabel());
     }

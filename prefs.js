@@ -89,11 +89,11 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and name in the top bar, with optional hostname and keep-awake controls.',
+            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally indicate the current computer, offers a keep-awake control, and adds quick access to preferences and log out from the user submenu.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
-            subtitle: 'Denis Zvegelj',
+            subtitle: 'Denis Zvegelj, 2026',
         });
         const licenseRow = new Adw.ActionRow({
             title: 'License',
