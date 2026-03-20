@@ -1,5 +1,5 @@
 import Adw from 'gi://Adw';
-import Gtk from 'gi://Gtk';
+import Gio from 'gi://Gio';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -22,7 +22,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             'show-hostname',
             showHostRow,
             'active',
-            Gtk.SettingsBindFlags.DEFAULT
+            Gio.SettingsBindFlags.DEFAULT
         );
 
         group.add(showHostRow);
