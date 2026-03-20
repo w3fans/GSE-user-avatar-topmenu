@@ -120,7 +120,7 @@ rm -f "$bundle"
 gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema "$schema_xml" .
 
 git add "$version_file" "$metadata_file" "$schema_xml"
-git add prefs.js extension.js stylesheet.css README.md .gitignore
+git add prefs.js extension.js stylesheet.css README.md CHANGELOG.md .gitignore
 
 git commit -m "chore(release): ${tag}"
 git tag -a "$tag" -m "$msg"

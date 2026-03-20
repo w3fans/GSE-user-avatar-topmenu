@@ -63,10 +63,25 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const infoGroup = new Adw.PreferencesGroup({
             title: 'About',
         });
+        const descriptionRow = new Adw.ActionRow({
+            title: 'Description',
+            subtitle: 'Shows your avatar and name in the top bar, with optional hostname and keep-awake controls.',
+        });
+        const authorRow = new Adw.ActionRow({
+            title: 'Author',
+            subtitle: 'Denis Zvegelj',
+        });
+        const licenseRow = new Adw.ActionRow({
+            title: 'License',
+            subtitle: 'GNU GPL v3',
+        });
         const versionRow = new Adw.ActionRow({
             title: 'Installed version',
             subtitle: version,
         });
+        infoGroup.add(descriptionRow);
+        infoGroup.add(authorRow);
+        infoGroup.add(licenseRow);
         infoGroup.add(versionRow);
         page.add(infoGroup);
 

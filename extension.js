@@ -7,6 +7,7 @@ import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
@@ -139,9 +140,13 @@ export default class UsernameAvatarExtension extends Extension {
 
             if (key === 'place-after-navigation')
                 this._rebuildButton();
+
+            if (key === 'show-hostname')
+                this._refreshQuickSettingsMenu();
         });
 
         this._rebuildButton();
+        this._addQuickSettingsMenu();
         this._syncInhibitor();
     }
 
@@ -152,6 +157,7 @@ export default class UsernameAvatarExtension extends Extension {
         }
 
         this._releaseInhibitor();
+        this._removeQuickSettingsMenu();
         this._button?.destroy();
         this._button = null;
         this._settings = null;
@@ -233,5 +239,50 @@ export default class UsernameAvatarExtension extends Extension {
         } finally {
             this._inhibitCookie = null;
         }
+    }
+
+    _getDisplayName() {
+        const realName = GLib.get_real_name();
+        const userName = GLib.get_user_name();
+        const hostname = GLib.get_host_name();
+
+        let label = realName && realName !== 'Unknown' ? realName : userName;
+
+        if (this._settings.get_boolean('show-hostname'))
+            label += ` at ${hostname}`;
+
+        return label;
+    }
+
+    _addQuickSettingsMenu() {
+        const quickSettings = Main.panel.statusArea.quickSettings;
+
+        if (!quickSettings?.menu)
+            return;
+
+        this._quickSettingsItem = new PopupMenu.PopupSubMenuMenuItem(this._getDisplayName(), true);
+        this._quickSettingsItem.icon.icon_name = 'avatar-default-symbolic';
+
+        this._quickSettingsItem.menu.addAction('Open Preferences', () => {
+            this.openPreferences();
+        });
+        this._quickSettingsItem.menu.addAction('Log Out', () => {
+            Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
+        });
+
+        this._quickSettingsSeparator = new PopupMenu.PopupSeparatorMenuItem();
+        quickSettings.menu.addMenuItem(this._quickSettingsSeparator);
+        quickSettings.menu.addMenuItem(this._quickSettingsItem);
+    }
+
+    _refreshQuickSettingsMenu() {
+        this._quickSettingsItem?.label.set_text(this._getDisplayName());
+    }
+
+    _removeQuickSettingsMenu() {
+        this._quickSettingsItem?.destroy();
+        this._quickSettingsItem = null;
+        this._quickSettingsSeparator?.destroy();
+        this._quickSettingsSeparator = null;
     }
 }

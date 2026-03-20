@@ -1,67 +1,70 @@
-# Username Avatar Top Menu
+# GSE User Avatar Top Menu
 
-GNOME Shell extension that shows the current username with avatar in the top bar.
-It can optionally append the computer name, so the label becomes `John at myPC`.
-Current project version is stored in `VERSION`.
+GNOME Shell extension that shows the current account avatar and display name in the top bar.
+It can optionally append the computer name, keep the session awake, and add a quick shortcut in the top-right menu for preferences and log out.
 
-## Files
+## Features
 
-- `metadata.json`
-- `extension.js`
-- `prefs.js`
-- `stylesheet.css`
-- `schemas/org.gnome.shell.extensions.username-avatar.gschema.xml`
+- Show avatar and display name in the left side of the top bar
+- Optionally show the hostname, for example `Denis at kvf`
+- Optional placement after `Apps` and `Places`
+- Keep-awake toggle with a visible active-state icon
+- Quick settings submenu on the top right with the user name, `Open Preferences`, and `Log Out`
+- Preferences window with author, license, description, and installed version
 
-## Local install
+## Project
 
-1. Create the extension directory:
-   `~/.local/share/gnome-shell/extensions/user-avatar-topmenu@basing.si`
-2. Copy `metadata.json`, `extension.js`, `prefs.js`, `stylesheet.css`, and the `schemas` directory into that directory.
-3. Compile the schema:
-   `glib-compile-schemas ~/.local/share/gnome-shell/extensions/user-avatar-topmenu@basing.si/schemas`
-4. Restart GNOME Shell or log out and back in.
-5. Enable the extension:
-   `gnome-extensions enable user-avatar-topmenu@basing.si`
-6. Open preferences:
-   `gnome-extensions prefs user-avatar-topmenu@basing.si`
+- Author: Denis Zvegelj
+- License: GNU GPL v3
+- Repository: `https://github.com/w3fans/GSE-user-avatar-topmenu`
+- Extension UUID: `user-avatar-topmenu@basing.si`
 
-## Package
-
-Run:
+## Install From Source
 
 ```bash
+git clone https://github.com/w3fans/GSE-user-avatar-topmenu.git
+cd GSE-user-avatar-topmenu
 gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
+gnome-extensions enable user-avatar-topmenu@basing.si
 ```
 
-That creates a zip you can install locally or upload later.
+Open preferences:
 
-## Release
+```bash
+gnome-extensions prefs user-avatar-topmenu@basing.si
+```
 
-Patch release:
+## Update Test Build
+
+```bash
+git pull
+gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
+gnome-extensions disable user-avatar-topmenu@basing.si
+gnome-extensions enable user-avatar-topmenu@basing.si
+```
+
+## Development
+
+Project version is stored in `VERSION`.
+
+Create a patch release:
 
 ```bash
 ./release.sh
 ```
 
-Minor or major release:
+Create a specific release:
 
 ```bash
-./release.sh 0.1.0 "Release v0.1.0"
-./release.sh 1.0.0 "Release v1.0.0"
+./release.sh v0.2.0 "Release v0.2.0"
 ```
 
-What `release.sh` does:
+`release.sh` will:
 
-- bumps `VERSION`
-- increments `metadata.json` `version`
-- recompiles schemas
-- rebuilds the extension zip
-- commits the release
-- creates a tag like `v0.0.2`
-- pushes the branch and the tag
-
-## Notes for listing
-
-- A public GitHub repository is a good project home before adding a website later.
-- The UUID is now domain-based for publishing: `user-avatar-topmenu@basing.si`.
-- Reviewers expect production-ready metadata, screenshots, and clean behavior.
+- bump `VERSION`
+- increment `metadata.json` `version`
+- rebuild the extension zip
+- create a git commit and tag
+- push the branch and the tag
