@@ -24,11 +24,12 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._hostname = GLib.get_host_name();
 
         this._box = new St.BoxLayout({
-            style_class: 'user-topmenu-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._box.spacing = 8;
 
         this._avatarFrame = this._createAvatarActor(this._userName);
+        this._avatarFrame.set_size(AVATAR_SIZE, AVATAR_SIZE);
 
         this._label = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
@@ -41,12 +42,11 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._hostnameBox = new St.BoxLayout({
-            style_class: 'user-topmenu-host-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._hostnameBox.spacing = 3;
         this._hostnameBox.add_child(this._hostnameIcon);
         this._hostnameLabel = new St.Label({
-            style_class: 'user-topmenu-host-label',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._hostnameBox.add_child(this._hostnameLabel);
@@ -120,7 +120,6 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         if (GLib.file_test(avatarPath, GLib.FileTest.EXISTS)) {
             return new St.Bin({
-                style_class: 'user-topmenu-avatar-frame',
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,
                 style: `
@@ -132,12 +131,10 @@ class UserTopMenuButton extends PanelMenu.Button {
         }
 
         return new St.Bin({
-            style_class: 'user-topmenu-avatar-frame',
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
             child: new St.Icon({
                 gicon: new Gio.ThemedIcon({name: 'avatar-default-symbolic'}),
-                style_class: 'user-topmenu-avatar',
                 icon_size: AVATAR_SIZE,
                 y_align: Clutter.ActorAlign.CENTER,
             }),

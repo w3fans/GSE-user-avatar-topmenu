@@ -1,27 +1,3 @@
-.user-topmenu-box {
-    spacing: 8px;
-}
-
-.user-topmenu-avatar-frame {
-    width: 24px;
-    height: 24px;
-}
-
-.user-topmenu-avatar {
-    icon-size: 24px;
-}
-
-.user-topmenu-host-box {
-    spacing: 3px;
-}
-
-.user-topmenu-host-icon {
-    icon-size: 12px;
-}
-
-.user-topmenu-host-label {
-}
-
 .user-topmenu-state-icon {
     icon-size: 14px;
 }
