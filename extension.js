@@ -124,8 +124,6 @@ class UserTopMenuButton extends PanelMenu.Button {
                 y_align: Clutter.ActorAlign.CENTER,
                 style: `
                     background-image: url("file://${avatarPath}");
-                    background-size: cover;
-                    background-position: center;
                 `,
             });
         }

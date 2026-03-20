@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.13
+
+- Removed the remaining GNOME Shell CSS warning source from the avatar inline style
+- Restored missing changelog entries for the recent 0.2.10 to 0.2.12 fixes
+
+## 0.2.12
+
+- Moved top-bar sizing and spacing from stylesheet rules into JS actor properties
+
+## 0.2.11
+
+- Removed the remaining risky shell CSS properties from the stylesheet
+- Added error handling for the quick-settings `Open Preferences` action
+
+## 0.2.10
+
+- Replaced GNOME Shell-unsafe CSS lengths with fixed pixel values
+
 ## 0.2.9
 
 - Fixed the top-bar computer-name slot to show hostname text again while staying layout-safe
