@@ -20,7 +20,7 @@
 .user-topmenu-host-box {
     spacing: 3px;
     min-width: 12px;
-    max-width: 9em;
+    max-width: 96px;
 }
 
 .user-topmenu-host-icon {
@@ -28,8 +28,8 @@
 }
 
 .user-topmenu-host-label {
-    font-size: 0.9em;
-    max-width: 8em;
+    font-size: 14px;
+    max-width: 84px;
 }
 
 .user-topmenu-state-icon {
