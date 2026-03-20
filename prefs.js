@@ -9,8 +9,11 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const settings = this.getSettings();
         const version = this._getDisplayVersion();
 
-        const page = new Adw.PreferencesPage();
-        const group = new Adw.PreferencesGroup({
+        const generalPage = new Adw.PreferencesPage({
+            title: 'General',
+            icon_name: 'avatar-default-symbolic',
+        });
+        const generalGroup = new Adw.PreferencesGroup({
             title: 'Label',
             description: 'Choose what text appears next to the avatar in the top bar.',
         });
@@ -51,11 +54,15 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
-        group.add(showHostRow);
-        group.add(placeAfterNavigationRow);
-        group.add(showTopBarRow);
-        page.add(group);
+        generalGroup.add(showHostRow);
+        generalGroup.add(placeAfterNavigationRow);
+        generalGroup.add(showTopBarRow);
+        generalPage.add(generalGroup);
 
+        const awakePage = new Adw.PreferencesPage({
+            title: 'Keep Awake',
+            icon_name: 'weather-clear-symbolic',
+        });
         const awakeGroup = new Adw.PreferencesGroup({
             title: 'Keep Awake',
             description: 'Prevent the session from going idle while the toggle is enabled.',
@@ -71,8 +78,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         awakeGroup.add(keepAwakeRow);
-        page.add(awakeGroup);
+        awakePage.add(awakeGroup);
 
+        const aboutPage = new Adw.PreferencesPage({
+            title: 'About',
+            icon_name: 'help-about-symbolic',
+        });
         const infoGroup = new Adw.PreferencesGroup({
             title: 'About',
         });
@@ -96,9 +107,11 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         infoGroup.add(authorRow);
         infoGroup.add(licenseRow);
         infoGroup.add(versionRow);
-        page.add(infoGroup);
+        aboutPage.add(infoGroup);
 
-        window.add(page);
+        window.add(generalPage);
+        window.add(awakePage);
+        window.add(aboutPage);
     }
 
     _getDisplayVersion() {

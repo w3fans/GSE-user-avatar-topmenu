@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5
+
+- Restored a clearly visible computer-name display in the top bar with icon plus hostname text
+- Split Preferences into separate pages for General, Keep Awake, and About
+- Improved the avatar frame styling for a more circular appearance
+
 ## 0.2.4
 
 - Made the top-bar hostname mode more compact by using the computer icon without adding a long extra text segment

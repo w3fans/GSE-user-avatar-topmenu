@@ -38,6 +38,12 @@ class UserTopMenuButton extends PanelMenu.Button {
             icon_name: 'computer-symbolic',
             style_class: 'user-topmenu-host-icon',
             visible: false,
+            icon_size: 12,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._hostnameLabel = new St.Label({
+            style_class: 'user-topmenu-host-label',
+            visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -51,6 +57,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
         this._box.add_child(this._hostnameIcon);
+        this._box.add_child(this._hostnameLabel);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -144,6 +151,8 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._label.set_text(displayName);
         this._hostnameIcon.visible = showHostname;
+        this._hostnameLabel.visible = showHostname;
+        this._hostnameLabel.set_text(this._hostname);
         this._nameItem.label.set_text(this._buildLabel());
     }
 
