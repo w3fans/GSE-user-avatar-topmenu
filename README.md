@@ -30,7 +30,7 @@ Current project version is stored in `VERSION`.
 Run:
 
 ```bash
-gnome-extensions pack --force --out-dir . --extra-source prefs.js --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
 ```
 
 That creates a zip you can install locally or upload later.
