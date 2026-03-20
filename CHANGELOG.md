@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7
+
+- Stabilized the computer-name indicator layout so enabling it no longer changes the top-bar structure
+- Kept the top-bar computer indicator as a compact fixed-width icon slot
+
 ## 0.2.6
 
 - Kept the top-bar computer-name indicator compact by showing the PC icon without expanding the top-bar text width

@@ -37,15 +37,14 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._hostnameIcon = new St.Icon({
             icon_name: 'computer-symbolic',
             style_class: 'user-topmenu-host-icon',
-            visible: false,
             icon_size: 12,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._hostnameLabel = new St.Label({
-            style_class: 'user-topmenu-host-label',
-            visible: false,
+        this._hostnameBox = new St.BoxLayout({
+            style_class: 'user-topmenu-host-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._hostnameBox.add_child(this._hostnameIcon);
 
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
@@ -56,8 +55,7 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
-        this._box.add_child(this._hostnameIcon);
-        this._box.add_child(this._hostnameLabel);
+        this._box.add_child(this._hostnameBox);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -150,9 +148,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         const showHostname = this._settings.get_boolean('show-hostname');
 
         this._label.set_text(displayName);
-        this._hostnameIcon.visible = showHostname;
-        this._hostnameLabel.visible = false;
-        this._hostnameLabel.set_text(this._hostname);
+        this._hostnameBox.opacity = showHostname ? 255 : 0;
         this._nameItem.label.set_text(this._buildLabel());
     }
 
