@@ -9,5 +9,19 @@
         When enabled, the panel label appends the local hostname after the account name.
       </description>
     </key>
+    <key name="keep-awake" type="b">
+      <default>false</default>
+      <summary>Keep the session awake</summary>
+      <description>
+        When enabled, the extension inhibits session idle so the screen saver does not activate.
+      </description>
+    </key>
+    <key name="place-after-navigation" type="b">
+      <default>false</default>
+      <summary>Place after Apps and Places</summary>
+      <description>
+        When enabled, the panel item is placed after the Apps and Places menus if they are loaded.
+      </description>
+    </key>
   </schema>
 </schemalist>

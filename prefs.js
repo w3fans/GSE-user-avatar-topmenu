@@ -27,8 +27,38 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const placeAfterNavigationRow = new Adw.SwitchRow({
+            title: 'Place after Apps and Places',
+            subtitle: 'When enabled, the panel item moves after those menus if they are present.',
+        });
+
+        settings.bind(
+            'place-after-navigation',
+            placeAfterNavigationRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         group.add(showHostRow);
+        group.add(placeAfterNavigationRow);
         page.add(group);
+
+        const awakeGroup = new Adw.PreferencesGroup({
+            title: 'Keep Awake',
+            description: 'Prevent the session from going idle while the toggle is enabled.',
+        });
+        const keepAwakeRow = new Adw.SwitchRow({
+            title: 'Block screen saver',
+            subtitle: 'Shows a sun icon in the panel while active.',
+        });
+        settings.bind(
+            'keep-awake',
+            keepAwakeRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+        awakeGroup.add(keepAwakeRow);
+        page.add(awakeGroup);
 
         const infoGroup = new Adw.PreferencesGroup({
             title: 'About',

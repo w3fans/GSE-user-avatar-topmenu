@@ -10,6 +10,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
+const INHIBIT_IDLE_FLAG = 8;
 
 const UserTopMenuButton = GObject.registerClass(
 class UserTopMenuButton extends PanelMenu.Button {
@@ -37,8 +38,16 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
 
+        this._stateIcon = new St.Icon({
+            icon_name: 'weather-clear-symbolic',
+            style_class: 'user-topmenu-state-icon',
+            visible: false,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
         this._box.add_child(this._avatar);
         this._box.add_child(this._label);
+        this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
         this._nameItem = new PopupMenu.PopupMenuItem(this._buildLabel(), {
@@ -47,11 +56,27 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._nameItem);
 
-        this._settingsChangedId = this._settings.connect('changed::show-hostname', () => {
-            this._refreshLabel();
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        this._keepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
+            'Keep awake',
+            this._settings.get_boolean('keep-awake')
+        );
+        this._keepAwakeToggledId = this._keepAwakeItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('keep-awake', state);
+        });
+        this.menu.addMenuItem(this._keepAwakeItem);
+
+        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'show-hostname')
+                this._refreshLabel();
+
+            if (key === 'keep-awake')
+                this._syncKeepAwakeState();
         });
 
         this._refreshLabel();
+        this._syncKeepAwakeState();
     }
 
     _getAvatarIcon(userName) {
@@ -82,10 +107,23 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._nameItem.label.set_text(label);
     }
 
+    _syncKeepAwakeState() {
+        const keepAwake = this._settings.get_boolean('keep-awake');
+        this._stateIcon.visible = keepAwake;
+
+        if (this._keepAwakeItem.state !== keepAwake)
+            this._keepAwakeItem.setToggleState(keepAwake);
+    }
+
     destroy() {
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
+        }
+
+        if (this._keepAwakeToggledId) {
+            this._keepAwakeItem.disconnect(this._keepAwakeToggledId);
+            this._keepAwakeToggledId = null;
         }
 
         super.destroy();
@@ -95,13 +133,105 @@ class UserTopMenuButton extends PanelMenu.Button {
 export default class UsernameAvatarExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._button = new UserTopMenuButton(this._settings);
-        Main.panel.addToStatusArea(this.uuid, this._button, 1, 'left');
+        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'keep-awake')
+                this._syncInhibitor();
+
+            if (key === 'place-after-navigation')
+                this._rebuildButton();
+        });
+
+        this._rebuildButton();
+        this._syncInhibitor();
     }
 
     disable() {
+        if (this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = null;
+        }
+
+        this._releaseInhibitor();
         this._button?.destroy();
         this._button = null;
         this._settings = null;
+    }
+
+    _rebuildButton() {
+        this._button?.destroy();
+        this._button = new UserTopMenuButton(this._settings);
+        Main.panel.addToStatusArea(this.uuid, this._button, this._getPanelPosition(), 'left');
+    }
+
+    _getPanelPosition() {
+        let position = 1;
+
+        if (!this._settings.get_boolean('place-after-navigation'))
+            return position;
+
+        if (Main.panel.statusArea['apps-menu'])
+            position += 1;
+
+        if (Main.panel.statusArea['places-menu'])
+            position += 1;
+
+        return position;
+    }
+
+    _syncInhibitor() {
+        if (this._settings.get_boolean('keep-awake'))
+            this._inhibitIdle();
+        else
+            this._releaseInhibitor();
+    }
+
+    _inhibitIdle() {
+        if (this._inhibitCookie)
+            return;
+
+        try {
+            const result = Gio.DBus.session.call_sync(
+                'org.gnome.SessionManager',
+                '/org/gnome/SessionManager',
+                'org.gnome.SessionManager',
+                'Inhibit',
+                new GLib.Variant('(susu)', [
+                    'Username Avatar Top Menu',
+                    0,
+                    'Keep awake enabled',
+                    INHIBIT_IDLE_FLAG,
+                ]),
+                new GLib.VariantType('(u)'),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
+            this._inhibitCookie = result.recursiveUnpack()[0];
+        } catch (error) {
+            console.error(`Failed to inhibit idle: ${error.message}`);
+        }
+    }
+
+    _releaseInhibitor() {
+        if (!this._inhibitCookie)
+            return;
+
+        try {
+            Gio.DBus.session.call_sync(
+                'org.gnome.SessionManager',
+                '/org/gnome/SessionManager',
+                'org.gnome.SessionManager',
+                'Uninhibit',
+                new GLib.Variant('(u)', [this._inhibitCookie]),
+                null,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
+        } catch (error) {
+            console.error(`Failed to release idle inhibitor: ${error.message}`);
+        } finally {
+            this._inhibitCookie = null;
+        }
     }
 }
