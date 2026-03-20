@@ -20,7 +20,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
 
         const showHostRow = new Adw.SwitchRow({
             title: 'Include computer name',
-            subtitle: 'Appends the hostname, for example "John at myPC".',
+            subtitle: 'Appends the hostname as text, for example "John at myPC".',
         });
 
         settings.bind(
@@ -89,7 +89,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally indicate the current computer, offers a keep-awake control, and adds quick access to preferences and log out from the user submenu.',
+            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally append the current computer name as text, offers a keep-awake control, and adds quick access to preferences and log out from the user submenu.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',

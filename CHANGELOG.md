@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.15
+
+- Reverted the top-bar computer indicator back to plain text hostname display
+- Restored the simpler `name at hostname` layout as the stable baseline for release
+
 ## 0.2.14
 
 - Replaced the custom avatar background-image rendering with a standard file-backed icon to avoid GNOME Shell CSS parser issues

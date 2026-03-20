@@ -35,22 +35,6 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        this._hostnameIcon = new St.Icon({
-            icon_name: 'computer-symbolic',
-            style_class: 'user-topmenu-host-icon',
-            icon_size: 12,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._hostnameBox = new St.BoxLayout({
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._hostnameBox.spacing = 3;
-        this._hostnameBox.add_child(this._hostnameIcon);
-        this._hostnameLabel = new St.Label({
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._hostnameBox.add_child(this._hostnameLabel);
-
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
             style_class: 'user-topmenu-state-icon',
@@ -60,7 +44,6 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
-        this._box.add_child(this._hostnameBox);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -146,7 +129,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         let label = this._getDisplayName();
 
         if (this._settings.get_boolean('show-hostname'))
-            label += ` on ${this._hostname}`;
+            label += ` at ${this._hostname}`;
 
         return label;
     }
@@ -155,9 +138,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         const displayName = this._getDisplayName();
         const showHostname = this._settings.get_boolean('show-hostname');
 
-        this._label.set_text(displayName);
-        this._hostnameIcon.opacity = showHostname ? 255 : 0;
-        this._hostnameLabel.set_text(showHostname ? this._hostname : '');
+        this._label.set_text(this._buildLabel());
         this._nameItem.label.set_text(this._buildLabel());
 
         if (this._showHostnameItem.state !== showHostname)
