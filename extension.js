@@ -13,8 +13,8 @@ const AVATAR_SIZE = 24;
 
 const UserTopMenuButton = GObject.registerClass(
 class UserTopMenuButton extends PanelMenu.Button {
-    constructor(settings) {
-        super(0.0, 'Username Avatar Top Menu', false);
+    _init(settings) {
+        super._init(0.0, 'Username Avatar Top Menu', false);
 
         this._settings = settings;
         this._userName = GLib.get_user_name();
