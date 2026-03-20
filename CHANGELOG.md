@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9
+
+- Fixed the top-bar computer-name slot to show hostname text again while staying layout-safe
+- Refreshed the right-side user submenu on hostname, keep-awake, and top-bar visibility changes
+
 ## 0.2.8
 
 - Restored hostname text next to the computer icon in the top bar

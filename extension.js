@@ -162,8 +162,8 @@ class UserTopMenuButton extends PanelMenu.Button {
         const showHostname = this._settings.get_boolean('show-hostname');
 
         this._label.set_text(displayName);
-        this._hostnameBox.opacity = showHostname ? 255 : 0;
-        this._hostnameLabel.set_text(this._hostname);
+        this._hostnameIcon.opacity = showHostname ? 255 : 0;
+        this._hostnameLabel.set_text(showHostname ? this._hostname : '');
         this._nameItem.label.set_text(this._buildLabel());
 
         if (this._showHostnameItem.state !== showHostname)
@@ -228,7 +228,7 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'place-after-navigation')
                 this._rebuildButton();
 
-            if (key === 'show-hostname')
+            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
