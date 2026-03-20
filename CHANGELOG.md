@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Expanded declared GNOME Shell compatibility to versions 45 through 49
+- Added a helper script to build versioned ZIP assets for GitHub Releases
+
 ## 0.2.2
 
 - Added circular avatar styling in the top bar

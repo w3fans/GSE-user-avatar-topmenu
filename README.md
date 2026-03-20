@@ -70,3 +70,15 @@ Create a specific release:
 - rebuild the extension zip
 - create a git commit and tag
 - push the branch and the tag
+
+Build versioned ZIP files for GitHub Releases:
+
+```bash
+./build-release-zips.sh
+```
+
+That creates archives in `dist/`, for example:
+
+- `dist/user-avatar-topmenu@basing.si-v0.2.0.shell-extension.zip`
+- `dist/user-avatar-topmenu@basing.si-v0.2.1.shell-extension.zip`
+- `dist/user-avatar-topmenu@basing.si-v0.2.2.shell-extension.zip`
