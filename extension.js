@@ -119,12 +119,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         const avatarPath = `/var/lib/AccountsService/icons/${userName}`;
 
         if (GLib.file_test(avatarPath, GLib.FileTest.EXISTS)) {
-            return new St.Bin({
+            return new St.Icon({
+                gicon: new Gio.FileIcon({file: Gio.File.new_for_path(avatarPath)}),
+                icon_size: AVATAR_SIZE,
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,
-                style: `
-                    background-image: url("file://${avatarPath}");
-                `,
             });
         }
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.14
+
+- Replaced the custom avatar background-image rendering with a standard file-backed icon to avoid GNOME Shell CSS parser issues
+- Restored a stable 24px avatar size in the top bar
+
 ## 0.2.13
 
 - Removed the remaining GNOME Shell CSS warning source from the avatar inline style
