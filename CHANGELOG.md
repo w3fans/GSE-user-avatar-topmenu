@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.19
+
+- Replaced the right-side popup row with a native quick-settings toggle
+- Made the right-side item click toggle the top-bar entry, while the submenu opens from the arrow like GNOME's built-in toggles
+- Switched the right-side enabled and disabled styling over to GNOME's own quick-settings colors
+
 ## 0.2.18
 
 - Added the remaining top-bar spacing between avatar and name, and between the computer icon and hostname

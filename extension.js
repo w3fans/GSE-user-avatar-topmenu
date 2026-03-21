@@ -7,11 +7,113 @@ import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
 const INHIBIT_IDLE_FLAG = 8;
+
+const UserQuickToggle = GObject.registerClass(
+class UserQuickToggle extends QuickSettings.QuickMenuToggle {
+    _init(extension) {
+        super._init({
+            title: extension._getDisplayName(),
+            iconName: 'avatar-default-symbolic',
+        });
+
+        this._extension = extension;
+        this._settings = extension._settings;
+
+        this.menu.setHeader('avatar-default-symbolic', extension._getDisplayName(), null);
+
+        this._keepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
+            'Keep awake',
+            this._settings.get_boolean('keep-awake')
+        );
+        this._keepAwakeToggledId = this._keepAwakeItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('keep-awake', state);
+        });
+        this.menu.addMenuItem(this._keepAwakeItem);
+
+        this._showHostnameItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show computer name',
+            this._settings.get_boolean('show-hostname')
+        );
+        this._showHostnameToggledId = this._showHostnameItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-hostname', state);
+        });
+        this.menu.addMenuItem(this._showHostnameItem);
+
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.menu.addAction('Open Preferences', () => {
+            this._extension.openPreferences().catch(error => {
+                console.error(`Failed to open preferences: ${error.message}`);
+            });
+        });
+        this.menu.addAction('Lock Screen', () => {
+            Util.spawn(['loginctl', 'lock-session']);
+        });
+        this.menu.addAction('Log Out', () => {
+            Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
+        });
+
+        this.connect('clicked', () => {
+            this._settings.set_boolean('show-topbar', this.checked);
+        });
+
+        this.sync();
+    }
+
+    sync() {
+        const keepAwake = this._settings.get_boolean('keep-awake');
+        const showHostname = this._settings.get_boolean('show-hostname');
+        const showTopBar = this._settings.get_boolean('show-topbar');
+        const displayName = this._extension._getDisplayName();
+
+        this.title = displayName;
+        this.checked = showTopBar;
+        this.menu.setHeader(
+            'avatar-default-symbolic',
+            displayName,
+            showTopBar ? 'Shown in top bar' : 'Hidden from top bar'
+        );
+
+        if (this._keepAwakeItem.state !== keepAwake)
+            this._keepAwakeItem.setToggleState(keepAwake);
+
+        if (this._showHostnameItem.state !== showHostname)
+            this._showHostnameItem.setToggleState(showHostname);
+    }
+
+    destroy() {
+        if (this._keepAwakeToggledId) {
+            this._keepAwakeItem.disconnect(this._keepAwakeToggledId);
+            this._keepAwakeToggledId = null;
+        }
+
+        if (this._showHostnameToggledId) {
+            this._showHostnameItem.disconnect(this._showHostnameToggledId);
+            this._showHostnameToggledId = null;
+        }
+
+        super.destroy();
+    }
+});
+
+const UserQuickIndicator = GObject.registerClass(
+class UserQuickIndicator extends QuickSettings.SystemIndicator {
+    _init(extension) {
+        super._init();
+
+        this._toggle = new UserQuickToggle(extension);
+        this.quickSettingsItems.push(this._toggle);
+    }
+
+    sync() {
+        this._toggle?.sync();
+    }
+});
 
 const UserTopMenuButton = GObject.registerClass(
 class UserTopMenuButton extends PanelMenu.Button {
@@ -361,101 +463,19 @@ export default class UsernameAvatarExtension extends Extension {
     _addQuickSettingsMenu() {
         const quickSettings = Main.panel.statusArea.quickSettings;
 
-        if (!quickSettings?.menu)
+        if (!quickSettings)
             return;
 
-        this._quickSettingsItem = new PopupMenu.PopupSubMenuMenuItem(this._getDisplayName(), true);
-        this._quickSettingsItem.icon.icon_name = 'avatar-default-symbolic';
-        this._quickSettingsItem.add_style_class_name('user-topmenu-quick-item');
-
-        this._quickKeepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Keep awake',
-            this._settings.get_boolean('keep-awake')
-        );
-        this._quickKeepAwakeToggledId = this._quickKeepAwakeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('keep-awake', state);
-        });
-        this._quickSettingsItem.menu.addMenuItem(this._quickKeepAwakeItem);
-
-        this._quickShowHostnameItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show computer name',
-            this._settings.get_boolean('show-hostname')
-        );
-        this._quickShowHostnameToggledId = this._quickShowHostnameItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-hostname', state);
-        });
-        this._quickSettingsItem.menu.addMenuItem(this._quickShowHostnameItem);
-
-        this._quickShowTopBarItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show in top bar',
-            this._settings.get_boolean('show-topbar')
-        );
-        this._quickShowTopBarToggledId = this._quickShowTopBarItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-topbar', state);
-        });
-        this._quickSettingsItem.menu.addMenuItem(this._quickShowTopBarItem);
-        this._quickSettingsItem.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        this._quickSettingsItem.menu.addAction('Open Preferences', () => {
-            this.openPreferences().catch(error => {
-                console.error(`Failed to open preferences: ${error.message}`);
-            });
-        });
-        this._quickSettingsItem.menu.addAction('Lock Screen', () => {
-            Util.spawn(['loginctl', 'lock-session']);
-        });
-        this._quickSettingsItem.menu.addAction('Log Out', () => {
-            Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
-        });
-
-        this._quickSettingsSeparator = new PopupMenu.PopupSeparatorMenuItem();
-        quickSettings.menu.addMenuItem(this._quickSettingsSeparator);
-        quickSettings.menu.addMenuItem(this._quickSettingsItem);
+        this._quickIndicator = new UserQuickIndicator(this);
+        quickSettings.addExternalIndicator(this._quickIndicator);
     }
 
     _refreshQuickSettingsMenu() {
-        const keepAwake = this._settings.get_boolean('keep-awake');
-        const showHostname = this._settings.get_boolean('show-hostname');
-        const showTopBar = this._settings.get_boolean('show-topbar');
-
-        this._quickSettingsItem?.label.set_text(this._getDisplayName());
-        this._quickSettingsItem?.remove_style_pseudo_class('active');
-
-        if (showTopBar)
-            this._quickSettingsItem?.add_style_pseudo_class('active');
-
-        if (this._quickKeepAwakeItem && this._quickKeepAwakeItem.state !== keepAwake)
-            this._quickKeepAwakeItem.setToggleState(keepAwake);
-
-        if (this._quickShowHostnameItem && this._quickShowHostnameItem.state !== showHostname)
-            this._quickShowHostnameItem.setToggleState(showHostname);
-
-        if (this._quickShowTopBarItem && this._quickShowTopBarItem.state !== showTopBar)
-            this._quickShowTopBarItem.setToggleState(showTopBar);
+        this._quickIndicator?.sync();
     }
 
     _removeQuickSettingsMenu() {
-        if (this._quickKeepAwakeToggledId) {
-            this._quickKeepAwakeItem.disconnect(this._quickKeepAwakeToggledId);
-            this._quickKeepAwakeToggledId = null;
-        }
-
-        if (this._quickShowHostnameToggledId) {
-            this._quickShowHostnameItem.disconnect(this._quickShowHostnameToggledId);
-            this._quickShowHostnameToggledId = null;
-        }
-
-        if (this._quickShowTopBarToggledId) {
-            this._quickShowTopBarItem.disconnect(this._quickShowTopBarToggledId);
-            this._quickShowTopBarToggledId = null;
-        }
-
-        this._quickSettingsItem?.destroy();
-        this._quickSettingsItem = null;
-        this._quickKeepAwakeItem = null;
-        this._quickShowHostnameItem = null;
-        this._quickShowTopBarItem = null;
-        this._quickSettingsSeparator?.destroy();
-        this._quickSettingsSeparator = null;
+        this._quickIndicator?.destroy();
+        this._quickIndicator = null;
     }
 }
