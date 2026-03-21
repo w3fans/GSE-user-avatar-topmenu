@@ -26,7 +26,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._box = new St.BoxLayout({
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._box.spacing = 8;
+        this._box.spacing = 6;
 
         this._avatarFrame = this._createAvatarActor(this._userName);
         this._avatarFrame.set_size(AVATAR_SIZE, AVATAR_SIZE);
@@ -44,6 +44,14 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._hostnameLabel = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._labelHostnameSpacer = new St.Widget({
+            width: 6,
+            visible: false,
+        });
+        this._hostnameStateSpacer = new St.Widget({
+            width: 8,
+            visible: false,
+        });
 
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
@@ -54,8 +62,10 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._label);
+        this._box.add_child(this._labelHostnameSpacer);
         this._box.add_child(this._hostnameIcon);
         this._box.add_child(this._hostnameLabel);
+        this._box.add_child(this._hostnameStateSpacer);
         this._box.add_child(this._stateIcon);
         this.add_child(this._box);
 
@@ -151,6 +161,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         const showHostname = this._settings.get_boolean('show-hostname');
 
         this._label.set_text(displayName);
+        this._labelHostnameSpacer.visible = showHostname;
         this._hostnameIcon.visible = showHostname;
         this._hostnameLabel.set_text(showHostname ? this._hostname : '');
         this._nameItem.label.set_text(this._buildLabel());
@@ -162,6 +173,7 @@ class UserTopMenuButton extends PanelMenu.Button {
     _syncKeepAwakeState() {
         const keepAwake = this._settings.get_boolean('keep-awake');
         this._stateIcon.visible = keepAwake;
+        this._hostnameStateSpacer.visible = keepAwake;
         this._stateIcon.remove_style_pseudo_class('active');
 
         if (keepAwake)
@@ -376,6 +388,9 @@ export default class UsernameAvatarExtension extends Extension {
             this.openPreferences().catch(error => {
                 console.error(`Failed to open preferences: ${error.message}`);
             });
+        });
+        this._quickSettingsItem.menu.addAction('Lock Screen', () => {
+            Util.spawn(['loginctl', 'lock-session']);
         });
         this._quickSettingsItem.menu.addAction('Log Out', () => {
             Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);

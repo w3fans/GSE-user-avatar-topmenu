@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.17
+
+- Added safer spacing between the name, computer indicator, and keep-awake icon in the top bar
+- Added a `Lock Screen` action to the right-side user submenu
+
 ## 0.2.16
 
 - Restored the computer icon with hostname text using only plain GNOME actor properties
