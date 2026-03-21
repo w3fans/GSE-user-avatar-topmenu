@@ -6,7 +6,7 @@
     color: #f6b73c;
 }
 
-.user-topmenu-quick-label:active,
-.user-topmenu-quick-icon:active {
-    color: #4da3ff;
+.user-topmenu-quick-item:active {
+    background-color: rgba(77, 163, 255, 0.18);
+    border-radius: 999px;
 }

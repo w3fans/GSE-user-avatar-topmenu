@@ -26,13 +26,16 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._box = new St.BoxLayout({
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._box.spacing = 6;
+        this._box.spacing = 0;
 
         this._avatarFrame = this._createAvatarActor(this._userName);
         this._avatarFrame.set_size(AVATAR_SIZE, AVATAR_SIZE);
 
         this._label = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._avatarLabelSpacer = new St.Widget({
+            width: 6,
         });
 
         this._hostnameIcon = new St.Icon({
@@ -41,11 +44,15 @@ class UserTopMenuButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
+        this._hostnameTextSpacer = new St.Widget({
+            width: 4,
+            visible: false,
+        });
         this._hostnameLabel = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._labelHostnameSpacer = new St.Widget({
-            width: 6,
+            width: 12,
             visible: false,
         });
         this._hostnameStateSpacer = new St.Widget({
@@ -61,9 +68,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
 
         this._box.add_child(this._avatarFrame);
+        this._box.add_child(this._avatarLabelSpacer);
         this._box.add_child(this._label);
         this._box.add_child(this._labelHostnameSpacer);
         this._box.add_child(this._hostnameIcon);
+        this._box.add_child(this._hostnameTextSpacer);
         this._box.add_child(this._hostnameLabel);
         this._box.add_child(this._hostnameStateSpacer);
         this._box.add_child(this._stateIcon);
@@ -103,6 +112,10 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._settings.set_boolean('show-hostname', state);
         });
         this.menu.addMenuItem(this._showHostnameItem);
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.menu.addAction('Lock Screen', () => {
+            Util.spawn(['loginctl', 'lock-session']);
+        });
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'show-hostname')
@@ -163,6 +176,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._label.set_text(displayName);
         this._labelHostnameSpacer.visible = showHostname;
         this._hostnameIcon.visible = showHostname;
+        this._hostnameTextSpacer.visible = showHostname;
         this._hostnameLabel.set_text(showHostname ? this._hostname : '');
         this._nameItem.label.set_text(this._buildLabel());
 
@@ -353,8 +367,6 @@ export default class UsernameAvatarExtension extends Extension {
         this._quickSettingsItem = new PopupMenu.PopupSubMenuMenuItem(this._getDisplayName(), true);
         this._quickSettingsItem.icon.icon_name = 'avatar-default-symbolic';
         this._quickSettingsItem.add_style_class_name('user-topmenu-quick-item');
-        this._quickSettingsItem.label.add_style_class_name('user-topmenu-quick-label');
-        this._quickSettingsItem.icon.add_style_class_name('user-topmenu-quick-icon');
 
         this._quickKeepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
             'Keep awake',
@@ -408,14 +420,9 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._quickSettingsItem?.label.set_text(this._getDisplayName());
         this._quickSettingsItem?.remove_style_pseudo_class('active');
-        this._quickSettingsItem?.label.remove_style_pseudo_class('active');
-        this._quickSettingsItem?.icon.remove_style_pseudo_class('active');
 
-        if (showTopBar) {
+        if (showTopBar)
             this._quickSettingsItem?.add_style_pseudo_class('active');
-            this._quickSettingsItem?.label.add_style_pseudo_class('active');
-            this._quickSettingsItem?.icon.add_style_pseudo_class('active');
-        }
 
         if (this._quickKeepAwakeItem && this._quickKeepAwakeItem.state !== keepAwake)
             this._quickKeepAwakeItem.setToggleState(keepAwake);

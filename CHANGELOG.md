@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.18
+
+- Added the remaining top-bar spacing between avatar and name, and between the computer icon and hostname
+- Added `Lock Screen` to the left user menu as well as the right-side submenu
+- Switched the right-side active state from text color to a highlighted background
+
 ## 0.2.17
 
 - Added safer spacing between the name, computer indicator, and keep-awake icon in the top bar
