@@ -226,6 +226,7 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._rebuildButton();
         this._addQuickSettingsMenu();
+        this._refreshQuickSettingsMenu();
         this._syncInhibitor();
     }
 
@@ -339,6 +340,9 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._quickSettingsItem = new PopupMenu.PopupSubMenuMenuItem(this._getDisplayName(), true);
         this._quickSettingsItem.icon.icon_name = 'avatar-default-symbolic';
+        this._quickSettingsItem.add_style_class_name('user-topmenu-quick-item');
+        this._quickSettingsItem.label.add_style_class_name('user-topmenu-quick-label');
+        this._quickSettingsItem.icon.add_style_class_name('user-topmenu-quick-icon');
 
         this._quickKeepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
             'Keep awake',
@@ -389,10 +393,12 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._quickSettingsItem?.label.set_text(this._getDisplayName());
         this._quickSettingsItem?.remove_style_pseudo_class('active');
+        this._quickSettingsItem?.label.remove_style_pseudo_class('active');
         this._quickSettingsItem?.icon.remove_style_pseudo_class('active');
 
         if (showTopBar) {
             this._quickSettingsItem?.add_style_pseudo_class('active');
+            this._quickSettingsItem?.label.add_style_pseudo_class('active');
             this._quickSettingsItem?.icon.add_style_pseudo_class('active');
         }
 

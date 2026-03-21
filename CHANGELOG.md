@@ -4,6 +4,7 @@
 
 - Restored the computer icon with hostname text using only plain GNOME actor properties
 - Kept the top-bar presentation on the simpler, CSS-free baseline
+- Highlighted the right-side user submenu label and icon when the top-bar item is enabled
 
 ## 0.2.15
 

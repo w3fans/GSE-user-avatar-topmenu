@@ -5,3 +5,8 @@
 .user-topmenu-state-icon:active {
     color: #f6b73c;
 }
+
+.user-topmenu-quick-label:active,
+.user-topmenu-quick-icon:active {
+    color: #4da3ff;
+}
