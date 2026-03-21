@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.16
+
+- Restored the computer icon with hostname text using only plain GNOME actor properties
+- Kept the top-bar presentation on the simpler, CSS-free baseline
+
 ## 0.2.15
 
 - Reverted the top-bar computer indicator back to plain text hostname display
