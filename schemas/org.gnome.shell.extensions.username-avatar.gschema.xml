@@ -30,5 +30,12 @@
         When disabled, the quick settings menu entry remains available but the panel item is hidden.
       </description>
     </key>
+    <key name="hide-topbar-fullscreen" type="b">
+      <default>false</default>
+      <summary>Hide the top bar while an app is fullscreen</summary>
+      <description>
+        When enabled, the GNOME top bar is hidden whenever any monitor has a fullscreen window.
+      </description>
+    </key>
   </schema>
 </schemalist>

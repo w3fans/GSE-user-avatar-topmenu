@@ -54,9 +54,22 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const hideInFullscreenRow = new Adw.SwitchRow({
+            title: 'Hide top bar in fullscreen',
+            subtitle: 'Automatically hides the GNOME top bar whenever an app enters fullscreen.',
+        });
+
+        settings.bind(
+            'hide-topbar-fullscreen',
+            hideInFullscreenRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         generalGroup.add(showHostRow);
         generalGroup.add(placeAfterNavigationRow);
         generalGroup.add(showTopBarRow);
+        generalGroup.add(hideInFullscreenRow);
         generalPage.add(generalGroup);
 
         const awakePage = new Adw.PreferencesPage({
@@ -89,7 +102,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally show a computer icon with the current hostname, offers a keep-awake control, and adds quick access to preferences and log out from the user submenu.',
+            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally show a computer icon with the current hostname, can hide the top bar while apps are fullscreen, offers a keep-awake control, and adds quick access to preferences and session actions from the user submenu.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',

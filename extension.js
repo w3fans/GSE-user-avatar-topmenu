@@ -45,6 +45,15 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         });
         this.menu.addMenuItem(this._showHostnameItem);
 
+        this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide top bar in fullscreen',
+            this._settings.get_boolean('hide-topbar-fullscreen')
+        );
+        this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-fullscreen', state);
+        });
+        this.menu.addMenuItem(this._hideFullscreenItem);
+
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Open Preferences', () => {
             this._extension.openPreferences().catch(error => {
@@ -69,6 +78,7 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         const keepAwake = this._settings.get_boolean('keep-awake');
         const showHostname = this._settings.get_boolean('show-hostname');
         const showTopBar = this._settings.get_boolean('show-topbar');
+        const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
         const displayName = this._extension._getDisplayName();
 
         this.title = displayName;
@@ -84,6 +94,9 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._showHostnameItem.state !== showHostname)
             this._showHostnameItem.setToggleState(showHostname);
+
+        if (this._hideFullscreenItem.state !== hideFullscreen)
+            this._hideFullscreenItem.setToggleState(hideFullscreen);
     }
 
     destroy() {
@@ -95,6 +108,11 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._showHostnameToggledId) {
             this._showHostnameItem.disconnect(this._showHostnameToggledId);
             this._showHostnameToggledId = null;
+        }
+
+        if (this._hideFullscreenToggledId) {
+            this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
+            this._hideFullscreenToggledId = null;
         }
 
         super.destroy();
@@ -214,6 +232,15 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._settings.set_boolean('show-hostname', state);
         });
         this.menu.addMenuItem(this._showHostnameItem);
+
+        this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide top bar in fullscreen',
+            this._settings.get_boolean('hide-topbar-fullscreen')
+        );
+        this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-fullscreen', state);
+        });
+        this.menu.addMenuItem(this._hideFullscreenItem);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Lock Screen', () => {
             Util.spawn(['loginctl', 'lock-session']);
@@ -228,11 +255,15 @@ class UserTopMenuButton extends PanelMenu.Button {
 
             if (key === 'show-topbar')
                 this._syncTopBarState();
+
+            if (key === 'hide-topbar-fullscreen')
+                this._syncHideFullscreenState();
         });
 
         this._refreshLabel();
         this._syncKeepAwakeState();
         this._syncTopBarState();
+        this._syncHideFullscreenState();
     }
 
     _createAvatarActor(userName) {
@@ -310,6 +341,13 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showTopBarItem.setToggleState(showTopBar);
     }
 
+    _syncHideFullscreenState() {
+        const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
+
+        if (this._hideFullscreenItem.state !== hideFullscreen)
+            this._hideFullscreenItem.setToggleState(hideFullscreen);
+    }
+
     destroy() {
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
@@ -331,6 +369,11 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showHostnameToggledId = null;
         }
 
+        if (this._hideFullscreenToggledId) {
+            this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
+            this._hideFullscreenToggledId = null;
+        }
+
         super.destroy();
     }
 });
@@ -345,17 +388,24 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'place-after-navigation')
                 this._rebuildButton();
 
-            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar')
+            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' || key === 'hide-topbar-fullscreen')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
                 this._rebuildButton();
+
+            if (key === 'hide-topbar-fullscreen')
+                this._syncFullscreenPanelVisibility();
+        });
+        this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
+            this._syncFullscreenPanelVisibility();
         });
 
         this._rebuildButton();
         this._addQuickSettingsMenu();
         this._refreshQuickSettingsMenu();
         this._syncInhibitor();
+        this._syncFullscreenPanelVisibility();
     }
 
     disable() {
@@ -364,7 +414,13 @@ export default class UsernameAvatarExtension extends Extension {
             this._settingsChangedId = null;
         }
 
+        if (this._fullscreenChangedId) {
+            global.display.disconnect(this._fullscreenChangedId);
+            this._fullscreenChangedId = null;
+        }
+
         this._releaseInhibitor();
+        Main.layoutManager.panelBox.visible = true;
         this._removeQuickSettingsMenu();
         this._button?.destroy();
         this._button = null;
@@ -458,6 +514,24 @@ export default class UsernameAvatarExtension extends Extension {
         const realName = GLib.get_real_name();
         const userName = GLib.get_user_name();
         return realName && realName !== 'Unknown' ? realName : userName;
+    }
+
+    _isAnyMonitorFullscreen() {
+        const monitorCount = global.display.get_n_monitors();
+
+        for (let i = 0; i < monitorCount; i++) {
+            if (global.display.get_monitor_in_fullscreen(i))
+                return true;
+        }
+
+        return false;
+    }
+
+    _syncFullscreenPanelVisibility() {
+        const hideFullscreen = this._settings?.get_boolean('hide-topbar-fullscreen');
+        const shouldHide = hideFullscreen && this._isAnyMonitorFullscreen();
+
+        Main.layoutManager.panelBox.visible = !shouldHide;
     }
 
     _addQuickSettingsMenu() {

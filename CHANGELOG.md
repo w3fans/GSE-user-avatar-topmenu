@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.20
+
+- Added an option to hide the GNOME top bar whenever a fullscreen app is active
+- Exposed the fullscreen auto-hide toggle in Preferences and in both extension menus
+
 ## 0.2.19
 
 - Replaced the right-side popup row with a native quick-settings toggle
