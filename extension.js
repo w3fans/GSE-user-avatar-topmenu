@@ -179,6 +179,18 @@ class UserTopMenuButton extends PanelMenu.Button {
             width: 8,
             visible: false,
         });
+        this._stateIconsBox = new St.BoxLayout({
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
+        this._stateIconsBox.spacing = 6;
+
+        this._fullscreenIcon = new St.Icon({
+            icon_name: 'view-fullscreen-symbolic',
+            style_class: 'user-topmenu-autohide-icon',
+            visible: false,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
 
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
@@ -186,6 +198,8 @@ class UserTopMenuButton extends PanelMenu.Button {
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._stateIconsBox.add_child(this._fullscreenIcon);
+        this._stateIconsBox.add_child(this._stateIcon);
 
         this._box.add_child(this._avatarFrame);
         this._box.add_child(this._avatarLabelSpacer);
@@ -195,7 +209,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._box.add_child(this._hostnameTextSpacer);
         this._box.add_child(this._hostnameLabel);
         this._box.add_child(this._hostnameStateSpacer);
-        this._box.add_child(this._stateIcon);
+        this._box.add_child(this._stateIconsBox);
         this.add_child(this._box);
 
         this._nameItem = new PopupMenu.PopupMenuItem(this._buildLabel(), {
@@ -320,7 +334,8 @@ class UserTopMenuButton extends PanelMenu.Button {
     _syncKeepAwakeState() {
         const keepAwake = this._settings.get_boolean('keep-awake');
         this._stateIcon.visible = keepAwake;
-        this._hostnameStateSpacer.visible = keepAwake;
+        this._stateIconsBox.visible = keepAwake || this._settings.get_boolean('hide-topbar-fullscreen');
+        this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
         this._stateIcon.remove_style_pseudo_class('active');
 
         if (keepAwake)
@@ -343,6 +358,9 @@ class UserTopMenuButton extends PanelMenu.Button {
 
     _syncHideFullscreenState() {
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
+        this._fullscreenIcon.visible = hideFullscreen;
+        this._stateIconsBox.visible = hideFullscreen || this._settings.get_boolean('keep-awake');
+        this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
@@ -400,7 +418,12 @@ export default class UsernameAvatarExtension extends Extension {
         this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
             this._syncFullscreenPanelVisibility();
         });
+        this._focusWindowChangedId = global.display.connect('notify::focus-window', () => {
+            this._trackFocusWindow();
+            this._syncFullscreenPanelVisibility();
+        });
 
+        this._trackFocusWindow();
         this._rebuildButton();
         this._addQuickSettingsMenu();
         this._refreshQuickSettingsMenu();
@@ -418,6 +441,13 @@ export default class UsernameAvatarExtension extends Extension {
             global.display.disconnect(this._fullscreenChangedId);
             this._fullscreenChangedId = null;
         }
+
+        if (this._focusWindowChangedId) {
+            global.display.disconnect(this._focusWindowChangedId);
+            this._focusWindowChangedId = null;
+        }
+
+        this._disconnectFocusWindowSignals();
 
         this._releaseInhibitor();
         Main.layoutManager.panelBox.visible = true;
@@ -527,9 +557,45 @@ export default class UsernameAvatarExtension extends Extension {
         return false;
     }
 
+    _isFocusWindowMaximized() {
+        return this._focusWindow?.is_maximized() ?? false;
+    }
+
+    _trackFocusWindow() {
+        this._disconnectFocusWindowSignals();
+        this._focusWindow = global.display.focus_window;
+
+        if (!this._focusWindow)
+            return;
+
+        this._focusWindowSignalIds = [
+            this._focusWindow.connect('notify::maximized-horizontally', () => {
+                this._syncFullscreenPanelVisibility();
+            }),
+            this._focusWindow.connect('notify::maximized-vertically', () => {
+                this._syncFullscreenPanelVisibility();
+            }),
+            this._focusWindow.connect('notify::fullscreen', () => {
+                this._syncFullscreenPanelVisibility();
+            }),
+        ];
+    }
+
+    _disconnectFocusWindowSignals() {
+        if (!this._focusWindow || !this._focusWindowSignalIds)
+            return;
+
+        for (const signalId of this._focusWindowSignalIds)
+            this._focusWindow.disconnect(signalId);
+
+        this._focusWindowSignalIds = null;
+        this._focusWindow = null;
+    }
+
     _syncFullscreenPanelVisibility() {
         const hideFullscreen = this._settings?.get_boolean('hide-topbar-fullscreen');
-        const shouldHide = hideFullscreen && this._isAnyMonitorFullscreen();
+        const shouldHide = hideFullscreen &&
+            (this._isAnyMonitorFullscreen() || this._isFocusWindowMaximized());
 
         Main.layoutManager.panelBox.visible = !shouldHide;
     }

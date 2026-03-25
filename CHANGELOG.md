@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.21
+
+- Extended top-bar auto-hide so it also triggers for the focused maximized window, not only true fullscreen
+- Added a dedicated auto-hide status icon in the panel while that mode is enabled
+
 ## 0.2.20
 
 - Added an option to hide the GNOME top bar whenever a fullscreen app is active

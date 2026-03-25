@@ -56,7 +56,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
 
         const hideInFullscreenRow = new Adw.SwitchRow({
             title: 'Hide top bar in fullscreen',
-            subtitle: 'Automatically hides the GNOME top bar whenever an app enters fullscreen.',
+            subtitle: 'Automatically hides the GNOME top bar whenever the focused app is maximized or fullscreen.',
         });
 
         settings.bind(

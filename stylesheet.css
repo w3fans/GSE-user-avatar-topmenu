@@ -2,6 +2,11 @@
     icon-size: 14px;
 }
 
+.user-topmenu-autohide-icon {
+    icon-size: 14px;
+    color: #6cc4ff;
+}
+
 .user-topmenu-state-icon:active {
     color: #f6b73c;
 }
