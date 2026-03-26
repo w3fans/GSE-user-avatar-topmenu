@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.22
+
+- Split top-bar autohide into separate fullscreen, maximized, and top-edge triggers on a dedicated Preferences page
+- Added an About-page support section with a donation link for further development
+
 ## 0.2.21
 
 - Extended top-bar auto-hide so it also triggers for the focused maximized window, not only true fullscreen

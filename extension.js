@@ -46,13 +46,31 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         this.menu.addMenuItem(this._showHostnameItem);
 
         this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide top bar in fullscreen',
+            'Hide in fullscreen',
             this._settings.get_boolean('hide-topbar-fullscreen')
         );
         this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
             this._settings.set_boolean('hide-topbar-fullscreen', state);
         });
         this.menu.addMenuItem(this._hideFullscreenItem);
+
+        this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide when maximized',
+            this._settings.get_boolean('hide-topbar-maximized')
+        );
+        this._hideMaximizedToggledId = this._hideMaximizedItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-maximized', state);
+        });
+        this.menu.addMenuItem(this._hideMaximizedItem);
+
+        this._hideTouchingItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide when touching top bar',
+            this._settings.get_boolean('hide-topbar-touching')
+        );
+        this._hideTouchingToggledId = this._hideTouchingItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-touching', state);
+        });
+        this.menu.addMenuItem(this._hideTouchingItem);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Open Preferences', () => {
@@ -79,6 +97,8 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         const showHostname = this._settings.get_boolean('show-hostname');
         const showTopBar = this._settings.get_boolean('show-topbar');
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
+        const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
+        const hideTouching = this._settings.get_boolean('hide-topbar-touching');
         const displayName = this._extension._getDisplayName();
 
         this.title = displayName;
@@ -97,6 +117,12 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
+
+        if (this._hideMaximizedItem.state !== hideMaximized)
+            this._hideMaximizedItem.setToggleState(hideMaximized);
+
+        if (this._hideTouchingItem.state !== hideTouching)
+            this._hideTouchingItem.setToggleState(hideTouching);
     }
 
     destroy() {
@@ -113,6 +139,16 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._hideFullscreenToggledId) {
             this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
             this._hideFullscreenToggledId = null;
+        }
+
+        if (this._hideMaximizedToggledId) {
+            this._hideMaximizedItem.disconnect(this._hideMaximizedToggledId);
+            this._hideMaximizedToggledId = null;
+        }
+
+        if (this._hideTouchingToggledId) {
+            this._hideTouchingItem.disconnect(this._hideTouchingToggledId);
+            this._hideTouchingToggledId = null;
         }
 
         super.destroy();
@@ -248,13 +284,31 @@ class UserTopMenuButton extends PanelMenu.Button {
         this.menu.addMenuItem(this._showHostnameItem);
 
         this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide top bar in fullscreen',
+            'Hide in fullscreen',
             this._settings.get_boolean('hide-topbar-fullscreen')
         );
         this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
             this._settings.set_boolean('hide-topbar-fullscreen', state);
         });
         this.menu.addMenuItem(this._hideFullscreenItem);
+
+        this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide when maximized',
+            this._settings.get_boolean('hide-topbar-maximized')
+        );
+        this._hideMaximizedToggledId = this._hideMaximizedItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-maximized', state);
+        });
+        this.menu.addMenuItem(this._hideMaximizedItem);
+
+        this._hideTouchingItem = new PopupMenu.PopupSwitchMenuItem(
+            'Hide when touching top bar',
+            this._settings.get_boolean('hide-topbar-touching')
+        );
+        this._hideTouchingToggledId = this._hideTouchingItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-touching', state);
+        });
+        this.menu.addMenuItem(this._hideTouchingItem);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Lock Screen', () => {
             Util.spawn(['loginctl', 'lock-session']);
@@ -270,14 +324,14 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'show-topbar')
                 this._syncTopBarState();
 
-            if (key === 'hide-topbar-fullscreen')
-                this._syncHideFullscreenState();
+            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
+                this._syncAutohideState();
         });
 
         this._refreshLabel();
         this._syncKeepAwakeState();
         this._syncTopBarState();
-        this._syncHideFullscreenState();
+        this._syncAutohideState();
     }
 
     _createAvatarActor(userName) {
@@ -334,7 +388,7 @@ class UserTopMenuButton extends PanelMenu.Button {
     _syncKeepAwakeState() {
         const keepAwake = this._settings.get_boolean('keep-awake');
         this._stateIcon.visible = keepAwake;
-        this._stateIconsBox.visible = keepAwake || this._settings.get_boolean('hide-topbar-fullscreen');
+        this._stateIconsBox.visible = keepAwake || this._isAutohideEnabled();
         this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
         this._stateIcon.remove_style_pseudo_class('active');
 
@@ -356,14 +410,30 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showTopBarItem.setToggleState(showTopBar);
     }
 
-    _syncHideFullscreenState() {
+    _isAutohideEnabled() {
+        return this._settings.get_boolean('hide-topbar-fullscreen') ||
+            this._settings.get_boolean('hide-topbar-maximized') ||
+            this._settings.get_boolean('hide-topbar-touching');
+    }
+
+    _syncAutohideState() {
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
-        this._fullscreenIcon.visible = hideFullscreen;
-        this._stateIconsBox.visible = hideFullscreen || this._settings.get_boolean('keep-awake');
+        const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
+        const hideTouching = this._settings.get_boolean('hide-topbar-touching');
+        const autohideEnabled = hideFullscreen || hideMaximized || hideTouching;
+
+        this._fullscreenIcon.visible = autohideEnabled;
+        this._stateIconsBox.visible = autohideEnabled || this._settings.get_boolean('keep-awake');
         this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
+
+        if (this._hideMaximizedItem.state !== hideMaximized)
+            this._hideMaximizedItem.setToggleState(hideMaximized);
+
+        if (this._hideTouchingItem.state !== hideTouching)
+            this._hideTouchingItem.setToggleState(hideTouching);
     }
 
     destroy() {
@@ -392,6 +462,16 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._hideFullscreenToggledId = null;
         }
 
+        if (this._hideMaximizedToggledId) {
+            this._hideMaximizedItem.disconnect(this._hideMaximizedToggledId);
+            this._hideMaximizedToggledId = null;
+        }
+
+        if (this._hideTouchingToggledId) {
+            this._hideTouchingItem.disconnect(this._hideTouchingToggledId);
+            this._hideTouchingToggledId = null;
+        }
+
         super.destroy();
     }
 });
@@ -406,13 +486,14 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'place-after-navigation')
                 this._rebuildButton();
 
-            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' || key === 'hide-topbar-fullscreen')
+            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' ||
+                key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
                 this._rebuildButton();
 
-            if (key === 'hide-topbar-fullscreen')
+            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncFullscreenPanelVisibility();
         });
         this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
@@ -561,6 +642,17 @@ export default class UsernameAvatarExtension extends Extension {
         return this._focusWindow?.is_maximized() ?? false;
     }
 
+    _isFocusWindowTouchingTopBar() {
+        if (!this._focusWindow)
+            return false;
+
+        const frameRect = this._focusWindow.get_frame_rect?.();
+        if (!frameRect)
+            return false;
+
+        return frameRect.y <= Main.layoutManager.panelBox.height;
+    }
+
     _trackFocusWindow() {
         this._disconnectFocusWindowSignals();
         this._focusWindow = global.display.focus_window;
@@ -576,6 +668,12 @@ export default class UsernameAvatarExtension extends Extension {
                 this._syncFullscreenPanelVisibility();
             }),
             this._focusWindow.connect('notify::fullscreen', () => {
+                this._syncFullscreenPanelVisibility();
+            }),
+            this._focusWindow.connect('position-changed', () => {
+                this._syncFullscreenPanelVisibility();
+            }),
+            this._focusWindow.connect('size-changed', () => {
                 this._syncFullscreenPanelVisibility();
             }),
         ];
@@ -594,8 +692,12 @@ export default class UsernameAvatarExtension extends Extension {
 
     _syncFullscreenPanelVisibility() {
         const hideFullscreen = this._settings?.get_boolean('hide-topbar-fullscreen');
-        const shouldHide = hideFullscreen &&
-            (this._isAnyMonitorFullscreen() || this._isFocusWindowMaximized());
+        const hideMaximized = this._settings?.get_boolean('hide-topbar-maximized');
+        const hideTouching = this._settings?.get_boolean('hide-topbar-touching');
+        const shouldHide =
+            (hideFullscreen && this._isAnyMonitorFullscreen()) ||
+            (hideMaximized && this._isFocusWindowMaximized()) ||
+            (hideTouching && this._isFocusWindowTouchingTopBar());
 
         Main.layoutManager.panelBox.visible = !shouldHide;
     }
