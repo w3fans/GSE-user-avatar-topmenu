@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.23
+
+- Replaced the placeholder support link with the live idz.si donation page for Basing development
+
 ## 0.2.22
 
 - Split top-bar autohide into separate fullscreen, maximized, and top-edge triggers on a dedicated Preferences page
