@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.24
+
+- Updated the support link to the final per-extension donation page under `/bs/`
+
 ## 0.2.23
 
 - Replaced the placeholder support link with the live idz.si donation page for Basing development

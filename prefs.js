@@ -161,7 +161,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             subtitle: 'If this extension is useful, you can support future development on idz.si.',
         });
         const supportButton = Gtk.LinkButton.new_with_label(
-            'https://idz.si/bmd/basing-donate.html',
+            'https://idz.si/bs/gse-user-avatar-topmenu-donate.html',
             'Open Donation Page'
         );
         supportRow.add_suffix(supportButton);
