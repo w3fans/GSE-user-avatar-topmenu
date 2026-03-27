@@ -30,6 +30,13 @@
         When disabled, the quick settings menu entry remains available but the panel item is hidden.
       </description>
     </key>
+    <key name="show-quick-settings" type="b">
+      <default>true</default>
+      <summary>Show the extension in the quick settings menu</summary>
+      <description>
+        When disabled, the right-side quick settings toggle is hidden.
+      </description>
+    </key>
     <key name="hide-topbar-fullscreen" type="b">
       <default>false</default>
       <summary>Hide the top bar while an app is fullscreen</summary>

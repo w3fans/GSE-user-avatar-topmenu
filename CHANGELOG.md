@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.26
+
+- Added a separate preference for showing or hiding the right-side quick settings username tile
+- Mirrored that quick-settings visibility toggle in the left menu and quick-settings submenu
+
 ## 0.2.25
 
 - Reworked panel autohide to release and restore GNOME's reserved top-bar space instead of only hiding the actor

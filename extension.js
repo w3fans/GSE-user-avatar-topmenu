@@ -45,6 +45,15 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         });
         this.menu.addMenuItem(this._showHostnameItem);
 
+        this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show in quick settings',
+            this._settings.get_boolean('show-quick-settings')
+        );
+        this._showQuickSettingsToggledId = this._showQuickSettingsItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-quick-settings', state);
+        });
+        this.menu.addMenuItem(this._showQuickSettingsItem);
+
         this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
             'Hide in fullscreen',
             this._settings.get_boolean('hide-topbar-fullscreen')
@@ -96,6 +105,7 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         const keepAwake = this._settings.get_boolean('keep-awake');
         const showHostname = this._settings.get_boolean('show-hostname');
         const showTopBar = this._settings.get_boolean('show-topbar');
+        const showQuickSettings = this._settings.get_boolean('show-quick-settings');
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
         const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
         const hideTouching = this._settings.get_boolean('hide-topbar-touching');
@@ -114,6 +124,9 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._showHostnameItem.state !== showHostname)
             this._showHostnameItem.setToggleState(showHostname);
+
+        if (this._showQuickSettingsItem.state !== showQuickSettings)
+            this._showQuickSettingsItem.setToggleState(showQuickSettings);
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
@@ -134,6 +147,11 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._showHostnameToggledId) {
             this._showHostnameItem.disconnect(this._showHostnameToggledId);
             this._showHostnameToggledId = null;
+        }
+
+        if (this._showQuickSettingsToggledId) {
+            this._showQuickSettingsItem.disconnect(this._showQuickSettingsToggledId);
+            this._showQuickSettingsToggledId = null;
         }
 
         if (this._hideFullscreenToggledId) {
@@ -283,6 +301,15 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._showHostnameItem);
 
+        this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
+            'Show in quick settings',
+            this._settings.get_boolean('show-quick-settings')
+        );
+        this._showQuickSettingsToggledId = this._showQuickSettingsItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-quick-settings', state);
+        });
+        this.menu.addMenuItem(this._showQuickSettingsItem);
+
         this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
             'Hide in fullscreen',
             this._settings.get_boolean('hide-topbar-fullscreen')
@@ -324,6 +351,9 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'show-topbar')
                 this._syncTopBarState();
 
+            if (key === 'show-quick-settings')
+                this._syncShowQuickSettingsState();
+
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncAutohideState();
         });
@@ -331,6 +361,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._refreshLabel();
         this._syncKeepAwakeState();
         this._syncTopBarState();
+        this._syncShowQuickSettingsState();
         this._syncAutohideState();
     }
 
@@ -410,6 +441,13 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showTopBarItem.setToggleState(showTopBar);
     }
 
+    _syncShowQuickSettingsState() {
+        const showQuickSettings = this._settings.get_boolean('show-quick-settings');
+
+        if (this._showQuickSettingsItem.state !== showQuickSettings)
+            this._showQuickSettingsItem.setToggleState(showQuickSettings);
+    }
+
     _isAutohideEnabled() {
         return this._settings.get_boolean('hide-topbar-fullscreen') ||
             this._settings.get_boolean('hide-topbar-maximized') ||
@@ -457,6 +495,11 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showHostnameToggledId = null;
         }
 
+        if (this._showQuickSettingsToggledId) {
+            this._showQuickSettingsItem.disconnect(this._showQuickSettingsToggledId);
+            this._showQuickSettingsToggledId = null;
+        }
+
         if (this._hideFullscreenToggledId) {
             this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
             this._hideFullscreenToggledId = null;
@@ -486,12 +529,17 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'place-after-navigation')
                 this._rebuildButton();
 
-            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' ||
+            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
                 key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
                 this._rebuildButton();
+
+            if (key === 'show-quick-settings') {
+                this._removeQuickSettingsMenu();
+                this._addQuickSettingsMenu();
+            }
 
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncFullscreenPanelVisibility();
@@ -730,7 +778,7 @@ export default class UsernameAvatarExtension extends Extension {
     _addQuickSettingsMenu() {
         const quickSettings = Main.panel.statusArea.quickSettings;
 
-        if (!quickSettings)
+        if (!quickSettings || !this._settings.get_boolean('show-quick-settings'))
             return;
 
         this._quickIndicator = new UserQuickIndicator(this);

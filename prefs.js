@@ -55,9 +55,22 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const showQuickSettingsRow = new Adw.SwitchRow({
+            title: 'Show in quick settings',
+            subtitle: 'Controls whether the username tile appears in the right-side quick settings menu.',
+        });
+
+        settings.bind(
+            'show-quick-settings',
+            showQuickSettingsRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         generalGroup.add(showHostRow);
         generalGroup.add(placeAfterNavigationRow);
         generalGroup.add(showTopBarRow);
+        generalGroup.add(showQuickSettingsRow);
         generalPage.add(generalGroup);
 
         const awakePage = new Adw.PreferencesPage({
