@@ -531,7 +531,7 @@ export default class UsernameAvatarExtension extends Extension {
         this._disconnectFocusWindowSignals();
 
         this._releaseInhibitor();
-        Main.layoutManager.panelBox.visible = true;
+        this._setPanelAutohide(false);
         this._removeQuickSettingsMenu();
         this._button?.destroy();
         this._button = null;
@@ -699,7 +699,32 @@ export default class UsernameAvatarExtension extends Extension {
             (hideMaximized && this._isFocusWindowMaximized()) ||
             (hideTouching && this._isFocusWindowTouchingTopBar());
 
-        Main.layoutManager.panelBox.visible = !shouldHide;
+        this._setPanelAutohide(shouldHide);
+    }
+
+    _setPanelAutohide(hidden) {
+        const panelBox = Main.layoutManager.panelBox;
+
+        if (!panelBox)
+            return;
+
+        if (hidden) {
+            if (!this._panelUntracked) {
+                Main.layoutManager.untrackChrome(panelBox);
+                this._panelUntracked = true;
+            }
+
+            panelBox.visible = false;
+        } else {
+            panelBox.visible = true;
+
+            if (this._panelUntracked) {
+                Main.layoutManager.trackChrome(panelBox, {affectsStruts: true});
+                this._panelUntracked = false;
+            }
+        }
+
+        Main.layoutManager._queueUpdateRegions?.();
     }
 
     _addQuickSettingsMenu() {

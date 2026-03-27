@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.25
+
+- Reworked panel autohide to release and restore GNOME's reserved top-bar space instead of only hiding the actor
+
 ## 0.2.24
 
 - Updated the support link to the final per-extension donation page under `/bs/`
