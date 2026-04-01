@@ -146,7 +146,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your user avatar and name in the GNOME top bar, can optionally show a computer icon with the current hostname, offers separate autohide rules for fullscreen and maximized windows, includes a keep-awake control, and adds quick access to preferences and session actions from the user submenu.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with an optional computer name, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, plus an optional quick settings user tile with session actions.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',

@@ -1,7 +1,7 @@
 # GSE User Avatar Top Menu
 
-GNOME Shell extension that shows the current account avatar and display name in the top bar.
-It can optionally append the computer name, keep the session awake, and add a quick shortcut in the top-right menu for preferences and log out.
+GNOME Shell extension that shows your avatar and username in the top bar.
+It can also show the computer name, keep the session awake, hide the top bar for fullscreen or maximized windows, and add an optional user tile in quick settings for preferences and session actions.
 
 ## Features
 

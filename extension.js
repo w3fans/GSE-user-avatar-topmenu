@@ -675,15 +675,8 @@ export default class UsernameAvatarExtension extends Extension {
         return realName && realName !== 'Unknown' ? realName : userName;
     }
 
-    _isAnyMonitorFullscreen() {
-        const monitorCount = global.display.get_n_monitors();
-
-        for (let i = 0; i < monitorCount; i++) {
-            if (global.display.get_monitor_in_fullscreen(i))
-                return true;
-        }
-
-        return false;
+    _isFocusWindowFullscreen() {
+        return this._focusWindow?.fullscreen ?? false;
     }
 
     _isFocusWindowMaximized() {
@@ -743,7 +736,7 @@ export default class UsernameAvatarExtension extends Extension {
         const hideMaximized = this._settings?.get_boolean('hide-topbar-maximized');
         const hideTouching = this._settings?.get_boolean('hide-topbar-touching');
         const shouldHide =
-            (hideFullscreen && this._isAnyMonitorFullscreen()) ||
+            (hideFullscreen && this._isFocusWindowFullscreen()) ||
             (hideMaximized && this._isFocusWindowMaximized()) ||
             (hideTouching && this._isFocusWindowTouchingTopBar());
 

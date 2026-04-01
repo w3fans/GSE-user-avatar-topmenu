@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.27
+
+- Limited fullscreen autohide to the focused fullscreen window so background fullscreen windows and other monitors no longer hide the top bar
+- Updated the project description text for the published listing and built-in metadata
+
 ## 0.2.26
 
 - Added a separate preference for showing or hiding the right-side quick settings username tile
