@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.28
+
+- Added GitHub Actions automation to create GitHub Releases and upload the built extension ZIP for future tags
+
 ## 0.2.27
 
 - Limited fullscreen autohide to the focused fullscreen window so background fullscreen windows and other monitors no longer hide the top bar

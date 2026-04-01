@@ -1,0 +1,66 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install schema tools
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin jq zip
+
+      - name: Read extension metadata
+        id: meta
+        run: |
+          UUID="$(jq -r '.uuid' metadata.json)"
+          VERSION_TAG="${GITHUB_REF_NAME}"
+          VERSION_TEXT="${VERSION_TAG#v}"
+          echo "uuid=${UUID}" >> "$GITHUB_OUTPUT"
+          echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version_text=${VERSION_TEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Compile schemas
+        run: glib-compile-schemas schemas
+
+      - name: Build extension zip
+        run: |
+          gnome_zip="${{ steps.meta.outputs.uuid }}.shell-extension.zip"
+          rm -f "$gnome_zip"
+          zip -r "$gnome_zip" \
+            extension.js \
+            metadata.json \
+            prefs.js \
+            stylesheet.css \
+            VERSION \
+            schemas
+          mkdir -p dist
+          cp "$gnome_zip" "dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip"
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum "${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip" \
+            > "${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.sha256"
+
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.version_tag }}
+          name: ${{ steps.meta.outputs.version_tag }}
+          files: |
+            dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip
+            dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.sha256
+          generate_release_notes: true
