@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.29
+
+- Fixed GitHub release packaging so compiled GSettings schemas are no longer shipped in release artifacts
+
 ## 0.2.28
 
 - Added GitHub Actions automation to create GitHub Releases and upload the built extension ZIP for future tags
