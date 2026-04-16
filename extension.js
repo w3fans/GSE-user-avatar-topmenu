@@ -185,6 +185,13 @@ class UserQuickIndicator extends QuickSettings.SystemIndicator {
     sync() {
         this._toggle?.sync();
     }
+
+    destroy() {
+        this.quickSettingsItems.forEach(item => item.destroy());
+        this.quickSettingsItems = [];
+        this._toggle = null;
+        super.destroy();
+    }
 });
 
 const UserTopMenuButton = GObject.registerClass(

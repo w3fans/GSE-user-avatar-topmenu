@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.31
+
+- Fixed duplicate right-side quick settings username entries by properly destroying the quick settings tile on disable/re-enable
+
 ## 0.2.30
 
 - Prevented duplicate quick settings username entries by always clearing any existing RHS tile before adding a new one
