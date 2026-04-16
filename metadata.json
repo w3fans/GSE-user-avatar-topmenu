@@ -4,7 +4,7 @@
   "description": "Show your avatar and username in the GNOME top bar with optional computer name, keep-awake, top bar autohide rules, and a quick settings user toggle.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 36,
+  "version": 37,
   "shell-version": [
     "45",
     "46",
