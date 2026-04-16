@@ -521,6 +521,9 @@ class UserTopMenuButton extends PanelMenu.Button {
 
 export default class UsernameAvatarExtension extends Extension {
     enable() {
+        if (this._settings)
+            return;
+
         this._settings = this.getSettings();
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'keep-awake')
@@ -770,6 +773,8 @@ export default class UsernameAvatarExtension extends Extension {
 
     _addQuickSettingsMenu() {
         const quickSettings = Main.panel.statusArea.quickSettings;
+
+        this._removeQuickSettingsMenu();
 
         if (!quickSettings || !this._settings.get_boolean('show-quick-settings'))
             return;

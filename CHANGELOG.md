@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.30
+
+- Prevented duplicate quick settings username entries by always clearing any existing RHS tile before adding a new one
+
 ## 0.2.29
 
 - Fixed GitHub release packaging so compiled GSettings schemas are no longer shipped in release artifacts
