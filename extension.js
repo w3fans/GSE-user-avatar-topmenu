@@ -63,6 +63,15 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         });
         this.menu.addMenuItem(this._hideFullscreenItem);
 
+        this._hideFullscreenAllMonitorsItem = new PopupMenu.PopupSwitchMenuItem(
+            'Fullscreen on all monitors',
+            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors')
+        );
+        this._hideFullscreenAllMonitorsToggledId = this._hideFullscreenAllMonitorsItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-fullscreen-all-monitors', state);
+        });
+        this.menu.addMenuItem(this._hideFullscreenAllMonitorsItem);
+
         this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
             'Hide when maximized',
             this._settings.get_boolean('hide-topbar-maximized')
@@ -94,7 +103,10 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
             Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
         });
 
-        this.connect('clicked', () => {
+        this.connect('notify::checked', () => {
+            if (this._syncingChecked)
+                return;
+
             this._settings.set_boolean('show-topbar', this.checked);
         });
 
@@ -107,12 +119,15 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         const showTopBar = this._settings.get_boolean('show-topbar');
         const showQuickSettings = this._settings.get_boolean('show-quick-settings');
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
+        const hideFullscreenAllMonitors = this._settings.get_boolean('hide-topbar-fullscreen-all-monitors');
         const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
         const hideTouching = this._settings.get_boolean('hide-topbar-touching');
         const displayName = this._extension._getDisplayName();
 
         this.title = displayName;
+        this._syncingChecked = true;
         this.checked = showTopBar;
+        this._syncingChecked = false;
         this.menu.setHeader(
             'avatar-default-symbolic',
             displayName,
@@ -130,6 +145,9 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
+
+        if (this._hideFullscreenAllMonitorsItem.state !== hideFullscreenAllMonitors)
+            this._hideFullscreenAllMonitorsItem.setToggleState(hideFullscreenAllMonitors);
 
         if (this._hideMaximizedItem.state !== hideMaximized)
             this._hideMaximizedItem.setToggleState(hideMaximized);
@@ -157,6 +175,11 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._hideFullscreenToggledId) {
             this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
             this._hideFullscreenToggledId = null;
+        }
+
+        if (this._hideFullscreenAllMonitorsToggledId) {
+            this._hideFullscreenAllMonitorsItem.disconnect(this._hideFullscreenAllMonitorsToggledId);
+            this._hideFullscreenAllMonitorsToggledId = null;
         }
 
         if (this._hideMaximizedToggledId) {
@@ -326,6 +349,15 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._hideFullscreenItem);
 
+        this._hideFullscreenAllMonitorsItem = new PopupMenu.PopupSwitchMenuItem(
+            'Fullscreen on all monitors',
+            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors')
+        );
+        this._hideFullscreenAllMonitorsToggledId = this._hideFullscreenAllMonitorsItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('hide-topbar-fullscreen-all-monitors', state);
+        });
+        this.menu.addMenuItem(this._hideFullscreenAllMonitorsItem);
+
         this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
             'Hide when maximized',
             this._settings.get_boolean('hide-topbar-maximized')
@@ -361,7 +393,8 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'show-quick-settings')
                 this._syncShowQuickSettingsState();
 
-            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
+            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
+                key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncAutohideState();
         });
 
@@ -457,15 +490,17 @@ class UserTopMenuButton extends PanelMenu.Button {
 
     _isAutohideEnabled() {
         return this._settings.get_boolean('hide-topbar-fullscreen') ||
+            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors') ||
             this._settings.get_boolean('hide-topbar-maximized') ||
             this._settings.get_boolean('hide-topbar-touching');
     }
 
     _syncAutohideState() {
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
+        const hideFullscreenAllMonitors = this._settings.get_boolean('hide-topbar-fullscreen-all-monitors');
         const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
         const hideTouching = this._settings.get_boolean('hide-topbar-touching');
-        const autohideEnabled = hideFullscreen || hideMaximized || hideTouching;
+        const autohideEnabled = hideFullscreen || hideFullscreenAllMonitors || hideMaximized || hideTouching;
 
         this._fullscreenIcon.visible = autohideEnabled;
         this._stateIconsBox.visible = autohideEnabled || this._settings.get_boolean('keep-awake');
@@ -473,6 +508,9 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
+
+        if (this._hideFullscreenAllMonitorsItem.state !== hideFullscreenAllMonitors)
+            this._hideFullscreenAllMonitorsItem.setToggleState(hideFullscreenAllMonitors);
 
         if (this._hideMaximizedItem.state !== hideMaximized)
             this._hideMaximizedItem.setToggleState(hideMaximized);
@@ -512,6 +550,11 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._hideFullscreenToggledId = null;
         }
 
+        if (this._hideFullscreenAllMonitorsToggledId) {
+            this._hideFullscreenAllMonitorsItem.disconnect(this._hideFullscreenAllMonitorsToggledId);
+            this._hideFullscreenAllMonitorsToggledId = null;
+        }
+
         if (this._hideMaximizedToggledId) {
             this._hideMaximizedItem.disconnect(this._hideMaximizedToggledId);
             this._hideMaximizedToggledId = null;
@@ -540,7 +583,8 @@ export default class UsernameAvatarExtension extends Extension {
                 this._rebuildButton();
 
             if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
-                key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
+                key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
+                key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
@@ -551,7 +595,8 @@ export default class UsernameAvatarExtension extends Extension {
                 this._addQuickSettingsMenu();
             }
 
-            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
+            if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
+                key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncFullscreenPanelVisibility();
         });
         this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
@@ -686,7 +731,13 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _isFocusWindowFullscreen() {
-        return this._focusWindow?.fullscreen ?? false;
+        if (!this._focusWindow?.fullscreen)
+            return false;
+
+        if (this._settings?.get_boolean('hide-topbar-fullscreen-all-monitors'))
+            return true;
+
+        return this._focusWindow.get_monitor?.() === global.display.get_primary_monitor();
     }
 
     _isFocusWindowMaximized() {

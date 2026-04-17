@@ -104,11 +104,21 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const hideInFullscreenRow = new Adw.SwitchRow({
             title: 'Hide in fullscreen',
-            subtitle: 'Hide the top bar whenever any monitor has a fullscreen window.',
+            subtitle: 'Hide the top bar whenever the focused app is fullscreen.',
         });
         settings.bind(
             'hide-topbar-fullscreen',
             hideInFullscreenRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+        const hideFullscreenAllMonitorsRow = new Adw.SwitchRow({
+            title: 'Fullscreen on all monitors',
+            subtitle: 'When enabled, fullscreen autohide applies to focused fullscreen windows on any monitor, not only the primary one.',
+        });
+        settings.bind(
+            'hide-topbar-fullscreen-all-monitors',
+            hideFullscreenAllMonitorsRow,
             'active',
             Gio.SettingsBindFlags.DEFAULT
         );
@@ -133,6 +143,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         autohideGroup.add(hideInFullscreenRow);
+        autohideGroup.add(hideFullscreenAllMonitorsRow);
         autohideGroup.add(hideMaximizedRow);
         autohideGroup.add(hideTouchingRow);
         autohidePage.add(autohideGroup);
@@ -164,6 +175,24 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         infoGroup.add(authorRow);
         infoGroup.add(licenseRow);
         infoGroup.add(versionRow);
+        const disableRow = new Adw.ActionRow({
+            title: 'Disable extension',
+            subtitle: 'Turns the extension off from Preferences.',
+        });
+        const disableButton = new Gtk.Button({
+            label: 'Disable',
+            valign: Gtk.Align.CENTER,
+        });
+        disableButton.connect('clicked', () => {
+            const launcher = Gio.Subprocess.new(
+                ['gnome-extensions', 'disable', this.metadata.uuid],
+                Gio.SubprocessFlags.NONE
+            );
+            launcher.wait_async(null, null);
+        });
+        disableRow.add_suffix(disableButton);
+        disableRow.activatable_widget = disableButton;
+        infoGroup.add(disableRow);
         aboutPage.add(infoGroup);
 
         const supportGroup = new Adw.PreferencesGroup({

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.32
+
+- Made the right-side username quick-settings tile follow its checked state more reliably when toggling top-bar visibility
+- Added an option to limit fullscreen autohide to the primary monitor or apply it on all monitors
+- Added a disable action in the Preferences window
+
 ## 0.2.31
 
 - Fixed duplicate right-side quick settings username entries by properly destroying the quick settings tile on disable/re-enable

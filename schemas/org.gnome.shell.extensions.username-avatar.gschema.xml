@@ -41,7 +41,14 @@
       <default>false</default>
       <summary>Hide the top bar while an app is fullscreen</summary>
       <description>
-        When enabled, the GNOME top bar is hidden whenever any monitor has a fullscreen window.
+        When enabled, the GNOME top bar is hidden whenever the focused window is fullscreen.
+      </description>
+    </key>
+    <key name="hide-topbar-fullscreen-all-monitors" type="b">
+      <default>false</default>
+      <summary>Apply fullscreen autohide on all monitors</summary>
+      <description>
+        When enabled, a focused fullscreen window on any monitor can hide the GNOME top bar. When disabled, fullscreen autohide only applies to the primary monitor.
       </description>
     </key>
     <key name="hide-topbar-maximized" type="b">
