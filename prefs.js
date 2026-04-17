@@ -67,10 +67,23 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const quickSettingsActionRow = new Adw.SwitchRow({
+            title: 'Quick settings click hides top bar only',
+            subtitle: 'When disabled, clicking the username tile in quick settings turns the whole extension off instead.',
+        });
+
+        settings.bind(
+            'quick-settings-toggle-topbar-only',
+            quickSettingsActionRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         generalGroup.add(showHostRow);
         generalGroup.add(placeAfterNavigationRow);
         generalGroup.add(showTopBarRow);
         generalGroup.add(showQuickSettingsRow);
+        generalGroup.add(quickSettingsActionRow);
         generalPage.add(generalGroup);
 
         const awakePage = new Adw.PreferencesPage({

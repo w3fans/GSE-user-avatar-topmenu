@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Added a preference for what clicking the right-side username tile should do: hide only the top-bar item or disable the whole extension
+- Mirrored that quick-settings click mode into the extension menus for easier switching
+- Kept fullscreen autohide limited to the focused fullscreen window, with a separate option for applying it on all monitors
+
 ## 0.2.32
 
 - Made the right-side username quick-settings tile follow its checked state more reliably when toggling top-bar visibility

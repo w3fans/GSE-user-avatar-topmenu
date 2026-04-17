@@ -37,6 +37,13 @@
         When disabled, the right-side quick settings toggle is hidden.
       </description>
     </key>
+    <key name="quick-settings-toggle-topbar-only" type="b">
+      <default>true</default>
+      <summary>Quick settings click toggles only the top bar item</summary>
+      <description>
+        When enabled, clicking the username tile in quick settings only shows or hides the top bar item. When disabled, clicking the tile disables the whole extension instead.
+      </description>
+    </key>
     <key name="hide-topbar-fullscreen" type="b">
       <default>false</default>
       <summary>Hide the top bar while an app is fullscreen</summary>
