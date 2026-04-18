@@ -112,27 +112,21 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
             Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
         });
 
-        this.connect('notify::checked', () => {
+        this.connect('clicked', () => {
             if (this._syncingChecked)
                 return;
 
             if (this._settings.get_boolean('quick-settings-toggle-topbar-only')) {
-                this._settings.set_boolean('show-topbar', this.checked);
+                const nextState = !this._settings.get_boolean('show-topbar');
+                this._settings.set_boolean('show-topbar', nextState);
                 return;
             }
 
-            if (!this.checked) {
-                Util.spawn([
-                    'gnome-extensions',
-                    'disable',
-                    this._extension.uuid,
-                ]);
-                return;
-            }
-
-            this._syncingChecked = true;
-            this.checked = true;
-            this._syncingChecked = false;
+            Util.spawn([
+                'gnome-extensions',
+                'disable',
+                this._extension.uuid,
+            ]);
         });
 
         this.sync();
@@ -799,15 +793,16 @@ export default class UsernameAvatarExtension extends Extension {
         if (this._settings?.get_boolean('hide-topbar-fullscreen-all-monitors'))
             return true;
 
-        return this._focusWindow.get_monitor?.() === global.display.get_primary_monitor();
+        return this._isFocusWindowOnPrimaryMonitor();
     }
 
     _isFocusWindowMaximized() {
-        return this._focusWindow?.is_maximized() ?? false;
+        return this._isFocusWindowOnPrimaryMonitor() &&
+            (this._focusWindow?.is_maximized() ?? false);
     }
 
     _isFocusWindowTouchingTopBar() {
-        if (!this._focusWindow)
+        if (!this._focusWindow || !this._isFocusWindowOnPrimaryMonitor())
             return false;
 
         const frameRect = this._focusWindow.get_frame_rect?.();
@@ -815,6 +810,13 @@ export default class UsernameAvatarExtension extends Extension {
             return false;
 
         return frameRect.y <= Main.layoutManager.panelBox.height;
+    }
+
+    _isFocusWindowOnPrimaryMonitor() {
+        if (!this._focusWindow)
+            return false;
+
+        return this._focusWindow.get_monitor?.() === global.display.get_primary_monitor();
     }
 
     _trackFocusWindow() {

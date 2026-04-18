@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Switched the right-side username tile to handle its main click action directly, so it can reliably hide the top-bar item or disable the extension based on the selected preference
+- Limited maximized and top-edge autohide checks to the primary monitor, matching the intended top-bar behavior in multi-monitor setups
+- Kept fullscreen autohide primary-monitor-only by default, with the separate all-monitors option still available
 ## 0.4.0
 
 - Added a preference for what clicking the right-side username tile should do: hide only the top-bar item or disable the whole extension
