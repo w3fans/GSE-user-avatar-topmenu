@@ -9,6 +9,20 @@
         When enabled, the panel label appends the local hostname after the account name.
       </description>
     </key>
+    <key name="show-username" type="b">
+      <default>true</default>
+      <summary>Show username in the panel label</summary>
+      <description>
+        When enabled, the top bar shows the account name next to the avatar and optional hostname.
+      </description>
+    </key>
+    <key name="show-avatar" type="b">
+      <default>true</default>
+      <summary>Show avatar in the top bar</summary>
+      <description>
+        When enabled, the top bar shows the user avatar before the account name.
+      </description>
+    </key>
     <key name="keep-awake" type="b">
       <default>false</default>
       <summary>Keep the session awake</summary>

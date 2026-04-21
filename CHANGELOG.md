@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+- Added separate options for displaying the username and avatar in the top bar, so each element can be shown or hidden independently
+- Mirrored those new display toggles into the extension menus for quick access
+- Kept the panel label readable by falling back to the hostname or username when one of the top-bar text elements is hidden
+
 ## 0.4.2
 
 - Renamed the quick-settings click preference and menu switches so the disable-extension behavior is exposed directly as a positive option

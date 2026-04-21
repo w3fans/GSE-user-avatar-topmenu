@@ -31,6 +31,30 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
+        const showUsernameRow = new Adw.SwitchRow({
+            title: 'Display username',
+            subtitle: 'Controls whether the account name is shown in the top bar.',
+        });
+
+        settings.bind(
+            'show-username',
+            showUsernameRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
+        const showAvatarRow = new Adw.SwitchRow({
+            title: 'Display avatar',
+            subtitle: 'Controls whether the user avatar is shown in the top bar.',
+        });
+
+        settings.bind(
+            'show-avatar',
+            showAvatarRow,
+            'active',
+            Gio.SettingsBindFlags.DEFAULT
+        );
+
         const placeAfterNavigationRow = new Adw.SwitchRow({
             title: 'Place after Apps and Places',
             subtitle: 'When enabled, the panel item moves after those menus if they are present.',
@@ -80,6 +104,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         generalGroup.add(showHostRow);
+        generalGroup.add(showUsernameRow);
+        generalGroup.add(showAvatarRow);
         generalGroup.add(placeAfterNavigationRow);
         generalGroup.add(showTopBarRow);
         generalGroup.add(showQuickSettingsRow);

@@ -45,6 +45,24 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         });
         this.menu.addMenuItem(this._showHostnameItem);
 
+        this._showUsernameItem = new PopupMenu.PopupSwitchMenuItem(
+            'Display username',
+            this._settings.get_boolean('show-username')
+        );
+        this._showUsernameToggledId = this._showUsernameItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-username', state);
+        });
+        this.menu.addMenuItem(this._showUsernameItem);
+
+        this._showAvatarItem = new PopupMenu.PopupSwitchMenuItem(
+            'Display avatar',
+            this._settings.get_boolean('show-avatar')
+        );
+        this._showAvatarToggledId = this._showAvatarItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-avatar', state);
+        });
+        this.menu.addMenuItem(this._showAvatarItem);
+
         this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
             'Show in quick settings',
             this._settings.get_boolean('show-quick-settings')
@@ -135,6 +153,8 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
     sync() {
         const keepAwake = this._settings.get_boolean('keep-awake');
         const showHostname = this._settings.get_boolean('show-hostname');
+        const showUsername = this._settings.get_boolean('show-username');
+        const showAvatar = this._settings.get_boolean('show-avatar');
         const showTopBar = this._settings.get_boolean('show-topbar');
         const showQuickSettings = this._settings.get_boolean('show-quick-settings');
         const quickSettingsToggleTopbarOnly = this._settings.get_boolean('quick-settings-toggle-topbar-only');
@@ -161,6 +181,12 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._showHostnameItem.state !== showHostname)
             this._showHostnameItem.setToggleState(showHostname);
+
+        if (this._showUsernameItem.state !== showUsername)
+            this._showUsernameItem.setToggleState(showUsername);
+
+        if (this._showAvatarItem.state !== showAvatar)
+            this._showAvatarItem.setToggleState(showAvatar);
 
         if (this._showQuickSettingsItem.state !== showQuickSettings)
             this._showQuickSettingsItem.setToggleState(showQuickSettings);
@@ -190,6 +216,16 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._showHostnameToggledId) {
             this._showHostnameItem.disconnect(this._showHostnameToggledId);
             this._showHostnameToggledId = null;
+        }
+
+        if (this._showUsernameToggledId) {
+            this._showUsernameItem.disconnect(this._showUsernameToggledId);
+            this._showUsernameToggledId = null;
+        }
+
+        if (this._showAvatarToggledId) {
+            this._showAvatarItem.disconnect(this._showAvatarToggledId);
+            this._showAvatarToggledId = null;
         }
 
         if (this._showQuickSettingsToggledId) {
@@ -361,6 +397,24 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
         this.menu.addMenuItem(this._showHostnameItem);
 
+        this._showUsernameItem = new PopupMenu.PopupSwitchMenuItem(
+            'Display username',
+            this._settings.get_boolean('show-username')
+        );
+        this._showUsernameToggledId = this._showUsernameItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-username', state);
+        });
+        this.menu.addMenuItem(this._showUsernameItem);
+
+        this._showAvatarItem = new PopupMenu.PopupSwitchMenuItem(
+            'Display avatar',
+            this._settings.get_boolean('show-avatar')
+        );
+        this._showAvatarToggledId = this._showAvatarItem.connect('toggled', (_item, state) => {
+            this._settings.set_boolean('show-avatar', state);
+        });
+        this.menu.addMenuItem(this._showAvatarItem);
+
         this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
             'Show in quick settings',
             this._settings.get_boolean('show-quick-settings')
@@ -420,7 +474,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         });
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
-            if (key === 'show-hostname')
+            if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar')
                 this._refreshLabel();
 
             if (key === 'keep-awake')
@@ -476,10 +530,20 @@ class UserTopMenuButton extends PanelMenu.Button {
     }
 
     _buildLabel() {
-        let label = this._getDisplayName();
+        let label = '';
 
-        if (this._settings.get_boolean('show-hostname'))
-            label += ` on ${this._hostname}`;
+        if (this._settings.get_boolean('show-username'))
+            label = this._getDisplayName();
+
+        if (this._settings.get_boolean('show-hostname')) {
+            if (label)
+                label += ` on ${this._hostname}`;
+            else
+                label = this._hostname;
+        }
+
+        if (!label)
+            label = this._getDisplayName();
 
         return label;
     }
@@ -487,16 +551,30 @@ class UserTopMenuButton extends PanelMenu.Button {
     _refreshLabel() {
         const displayName = this._getDisplayName();
         const showHostname = this._settings.get_boolean('show-hostname');
+        const showUsername = this._settings.get_boolean('show-username');
+        const showAvatar = this._settings.get_boolean('show-avatar');
+        const hasLeadingText = showUsername;
+        const hasHostnameText = showHostname;
 
+        this._avatarFrame.visible = showAvatar;
+        this._avatarLabelSpacer.visible = showAvatar && (showUsername || showHostname);
+        this._label.visible = showUsername;
         this._label.set_text(displayName);
-        this._labelHostnameSpacer.visible = showHostname;
+        this._labelHostnameSpacer.visible = hasLeadingText && hasHostnameText;
         this._hostnameIcon.visible = showHostname;
         this._hostnameTextSpacer.visible = showHostname;
+        this._hostnameLabel.visible = showHostname;
         this._hostnameLabel.set_text(showHostname ? this._hostname : '');
         this._nameItem.label.set_text(this._buildLabel());
 
         if (this._showHostnameItem.state !== showHostname)
             this._showHostnameItem.setToggleState(showHostname);
+
+        if (this._showUsernameItem.state !== showUsername)
+            this._showUsernameItem.setToggleState(showUsername);
+
+        if (this._showAvatarItem.state !== showAvatar)
+            this._showAvatarItem.setToggleState(showAvatar);
     }
 
     _syncKeepAwakeState() {
@@ -590,6 +668,16 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showHostnameToggledId = null;
         }
 
+        if (this._showUsernameToggledId) {
+            this._showUsernameItem.disconnect(this._showUsernameToggledId);
+            this._showUsernameToggledId = null;
+        }
+
+        if (this._showAvatarToggledId) {
+            this._showAvatarItem.disconnect(this._showAvatarToggledId);
+            this._showAvatarToggledId = null;
+        }
+
         if (this._showQuickSettingsToggledId) {
             this._showQuickSettingsItem.disconnect(this._showQuickSettingsToggledId);
             this._showQuickSettingsToggledId = null;
@@ -637,7 +725,8 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'place-after-navigation')
                 this._rebuildButton();
 
-            if (key === 'show-hostname' || key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
+            if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar' ||
+                key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
                 key === 'quick-settings-toggle-topbar-only' ||
                 key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
