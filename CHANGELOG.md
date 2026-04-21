@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2
+
+- Renamed the quick-settings click preference and menu switches so the disable-extension behavior is exposed directly as a positive option
+- Kept the same underlying behavior: when that option is off, clicking the username tile hides only the top-bar entry
+
 ## 0.4.1
 
 - Switched the right-side username tile to handle its main click action directly, so it can reliably hide the top-bar item or disable the extension based on the selected preference

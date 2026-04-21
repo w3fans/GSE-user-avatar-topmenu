@@ -55,11 +55,11 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         this.menu.addMenuItem(this._showQuickSettingsItem);
 
         this._quickSettingsToggleModeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Quick settings click hides top bar only',
-            this._settings.get_boolean('quick-settings-toggle-topbar-only')
+            'Clicking username disables extension',
+            !this._settings.get_boolean('quick-settings-toggle-topbar-only')
         );
         this._quickSettingsToggleModeToggledId = this._quickSettingsToggleModeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('quick-settings-toggle-topbar-only', state);
+            this._settings.set_boolean('quick-settings-toggle-topbar-only', !state);
         });
         this.menu.addMenuItem(this._quickSettingsToggleModeItem);
 
@@ -165,8 +165,8 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._showQuickSettingsItem.state !== showQuickSettings)
             this._showQuickSettingsItem.setToggleState(showQuickSettings);
 
-        if (this._quickSettingsToggleModeItem.state !== quickSettingsToggleTopbarOnly)
-            this._quickSettingsToggleModeItem.setToggleState(quickSettingsToggleTopbarOnly);
+        if (this._quickSettingsToggleModeItem.state === quickSettingsToggleTopbarOnly)
+            this._quickSettingsToggleModeItem.setToggleState(!quickSettingsToggleTopbarOnly);
 
         if (this._hideFullscreenItem.state !== hideFullscreen)
             this._hideFullscreenItem.setToggleState(hideFullscreen);
@@ -371,11 +371,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         this.menu.addMenuItem(this._showQuickSettingsItem);
 
         this._quickSettingsToggleModeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Quick settings click hides top bar only',
-            this._settings.get_boolean('quick-settings-toggle-topbar-only')
+            'Clicking username disables extension',
+            !this._settings.get_boolean('quick-settings-toggle-topbar-only')
         );
         this._quickSettingsToggleModeToggledId = this._quickSettingsToggleModeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('quick-settings-toggle-topbar-only', state);
+            this._settings.set_boolean('quick-settings-toggle-topbar-only', !state);
         });
         this.menu.addMenuItem(this._quickSettingsToggleModeItem);
 
@@ -534,8 +534,8 @@ class UserTopMenuButton extends PanelMenu.Button {
     _syncQuickSettingsToggleModeState() {
         const topbarOnly = this._settings.get_boolean('quick-settings-toggle-topbar-only');
 
-        if (this._quickSettingsToggleModeItem.state !== topbarOnly)
-            this._quickSettingsToggleModeItem.setToggleState(topbarOnly);
+        if (this._quickSettingsToggleModeItem.state === topbarOnly)
+            this._quickSettingsToggleModeItem.setToggleState(!topbarOnly);
     }
 
     _isAutohideEnabled() {
