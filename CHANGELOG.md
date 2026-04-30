@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.5
+
+- Added the Fedora 44 desktop convenience toggles to both extension menus, not only Preferences
+- Grouped menu settings into cascading submenus for Display, Desktop, Autohide, and Extension behavior so the RHS menu stays manageable
+
 ## 0.4.4
 
 - Added GNOME Shell 50 to the supported extension versions for Fedora 44 and GNOME 50.1 systems
