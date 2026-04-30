@@ -9,6 +9,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         const version = this._getDisplayVersion();
+        const desktopInterfaceSettings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
+        const touchpadSettings = new Gio.Settings({schema: 'org.gnome.desktop.peripherals.touchpad'});
 
         const generalPage = new Adw.PreferencesPage({
             title: 'General',
@@ -112,6 +114,37 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         generalGroup.add(quickSettingsActionRow);
         generalPage.add(generalGroup);
 
+        const desktopPage = new Adw.PreferencesPage({
+            title: 'Desktop',
+            icon_name: 'preferences-desktop-symbolic',
+        });
+        const desktopGroup = new Adw.PreferencesGroup({
+            title: 'Desktop Behavior',
+            description: 'Quick access to a couple of GNOME desktop defaults that many Fedora 44 and GNOME 50 users want to turn back on.',
+        });
+
+        const primaryPasteRow = new Adw.SwitchRow({
+            title: 'Enable primary paste',
+            subtitle: 'Restores middle-click paste from selected text by setting gtk-enable-primary-paste.',
+        });
+        primaryPasteRow.active = desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
+        primaryPasteRow.connect('notify::active', row => {
+            desktopInterfaceSettings.set_boolean('gtk-enable-primary-paste', row.active);
+        });
+
+        const touchpadMiddleClickRow = new Adw.SwitchRow({
+            title: 'Three-finger middle click',
+            subtitle: 'Sets the touchpad tap button map to lrm so three-finger tap acts as middle click.',
+        });
+        touchpadMiddleClickRow.active = touchpadSettings.get_string('tap-button-map') === 'lrm';
+        touchpadMiddleClickRow.connect('notify::active', row => {
+            touchpadSettings.set_string('tap-button-map', row.active ? 'lrm' : 'default');
+        });
+
+        desktopGroup.add(primaryPasteRow);
+        desktopGroup.add(touchpadMiddleClickRow);
+        desktopPage.add(desktopGroup);
+
         const awakePage = new Adw.PreferencesPage({
             title: 'Keep Awake',
             icon_name: 'weather-clear-symbolic',
@@ -196,7 +229,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with an optional computer name, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, plus an optional quick settings user tile with session actions.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, an optional quick settings user tile with session actions, and a few desktop convenience toggles.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
@@ -252,6 +285,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
 
         window.add(generalPage);
         window.add(awakePage);
+        window.add(desktopPage);
         window.add(autohidePage);
         window.add(aboutPage);
     }

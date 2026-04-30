@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4
+
+- Added GNOME Shell 50 to the supported extension versions for Fedora 44 and GNOME 50.1 systems
+- Expanded the extension description in metadata and Preferences to better reflect the current feature set
+- Added desktop convenience switches in Preferences for primary selection paste and three-finger middle click on touchpads
+
 ## 0.4.3
 
 - Added separate options for displaying the username and avatar in the top bar, so each element can be shown or hidden independently

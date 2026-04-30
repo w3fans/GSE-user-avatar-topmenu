@@ -1,7 +1,7 @@
 {
   "uuid": "user-avatar-topmenu@basing.si",
   "name": "Username Avatar Top Menu",
-  "description": "Show your avatar and username in the GNOME top bar with optional computer name, keep-awake, top bar autohide rules, and a quick settings user toggle.",
+  "description": "Show your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, smart top-bar autohide rules, a quick settings user toggle, and convenient session and desktop behavior shortcuts.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
   "version": 43,
@@ -10,6 +10,7 @@
     "46",
     "47",
     "48",
-    "49"
+    "49",
+    "50"
   ]
 }
