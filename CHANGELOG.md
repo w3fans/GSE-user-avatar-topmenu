@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.7
+
+- Increased the default Preferences window size so the settings pages require less scrolling
+
 ## 0.4.6
 
 - Expanded the extension description to mention restoring middle-click paste, primary selection copy, and three-finger middle click for GNOME 50 and Fedora 44 users
