@@ -4,7 +4,7 @@
   "description": "Show your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, smart top-bar autohide rules, a quick settings user toggle, and desktop shortcuts for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 46,
+  "version": 47,
   "shell-version": [
     "45",
     "46",
