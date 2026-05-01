@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6
+
+- Expanded the extension description to mention restoring middle-click paste, primary selection copy, and three-finger middle click for GNOME 50 and Fedora 44 users
+
 ## 0.4.5
 
 - Added the Fedora 44 desktop convenience toggles to both extension menus, not only Preferences

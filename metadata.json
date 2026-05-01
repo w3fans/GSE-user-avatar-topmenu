@@ -1,7 +1,7 @@
 {
   "uuid": "user-avatar-topmenu@basing.si",
   "name": "Username Avatar Top Menu",
-  "description": "Show your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, smart top-bar autohide rules, a quick settings user toggle, and convenient session and desktop behavior shortcuts.",
+  "description": "Show your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, smart top-bar autohide rules, a quick settings user toggle, and desktop shortcuts for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
   "version": 45,

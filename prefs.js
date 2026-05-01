@@ -229,7 +229,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, an optional quick settings user tile with session actions, and a few desktop convenience toggles.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, an optional quick settings user tile with session actions, and desktop convenience toggles for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
