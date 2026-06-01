@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Added optional top-bar columns for CPU, memory, swap, iGPU and dGPU load, with separate enable switches and left/right placement
+- Added optional CPU, iGPU and dGPU temperature columns, with independent enable switches and left/right placement
+- Added Shell-native hover detail boxes for metric columns
+- Added a new-thread workflow section to the README so future work starts from the same project steps
+
 ## 0.4.7
 
 - Increased the default Preferences window size so the settings pages require less scrolling

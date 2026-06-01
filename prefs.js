@@ -147,6 +147,54 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         desktopGroup.add(touchpadMiddleClickRow);
         desktopPage.add(desktopGroup);
 
+        const loadsPage = new Adw.PreferencesPage({
+            title: 'Loads',
+            icon_name: 'utilities-system-monitor-symbolic',
+        });
+        const loadsGroup = new Adw.PreferencesGroup({
+            title: 'System Loads',
+            description: 'Choose which live usage columns are shown in the top bar.',
+        });
+        const loadsPositionRow = new Adw.ComboRow({
+            title: 'Display position',
+            subtitle: 'Left shows loads after the user item; right shows loads before the system icons.',
+            model: Gtk.StringList.new(['Left side', 'Right side']),
+            selected: settings.get_string('loads-position') === 'right' ? 1 : 0,
+        });
+        loadsPositionRow.connect('notify::selected', row => {
+            settings.set_string('loads-position', row.selected === 1 ? 'right' : 'left');
+        });
+        loadsGroup.add(loadsPositionRow);
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-cpu', 'CPU usage', 'Shows CPU load as a percentage column.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-mem', 'Memory usage', 'Shows memory utilization with used and total memory in the tooltip.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-igpu', 'Integrated GPU usage', 'Shows iGPU usage and memory details when exposed by the driver.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-dgpu', 'Discrete GPU usage', 'Shows dGPU usage and memory details when exposed by the driver.');
+        loadsPage.add(loadsGroup);
+
+        const tempsPage = new Adw.PreferencesPage({
+            title: 'Temps',
+            icon_name: 'temperature-symbolic',
+        });
+        const tempsGroup = new Adw.PreferencesGroup({
+            title: 'Temperatures',
+            description: 'Choose which live temperature columns are shown in the top bar.',
+        });
+        const tempsPositionRow = new Adw.ComboRow({
+            title: 'Display position',
+            subtitle: 'Left shows temperatures after loads; right shows temperatures before loads.',
+            model: Gtk.StringList.new(['Left side', 'Right side']),
+            selected: settings.get_string('temps-position') === 'right' ? 1 : 0,
+        });
+        tempsPositionRow.connect('notify::selected', row => {
+            settings.set_string('temps-position', row.selected === 1 ? 'right' : 'left');
+        });
+        tempsGroup.add(tempsPositionRow);
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-cpu', 'CPU temperature', 'Shows the CPU package temperature when available.');
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', 'Integrated GPU temperature', 'Shows iGPU temperature when available.');
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', 'Discrete GPU temperature', 'Shows dGPU temperature when available.');
+        tempsPage.add(tempsGroup);
+
         const awakePage = new Adw.PreferencesPage({
             title: 'Keep Awake',
             icon_name: 'weather-clear-symbolic',
@@ -288,8 +336,16 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         window.add(generalPage);
         window.add(awakePage);
         window.add(desktopPage);
+        window.add(loadsPage);
+        window.add(tempsPage);
         window.add(autohidePage);
         window.add(aboutPage);
+    }
+
+    _addBoundSwitch(group, settings, key, title, subtitle) {
+        const row = new Adw.SwitchRow({title, subtitle});
+        settings.bind(key, row, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(row);
     }
 
     _getDisplayVersion() {

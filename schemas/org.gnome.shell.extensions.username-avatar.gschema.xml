@@ -86,5 +86,59 @@
         When enabled, the GNOME top bar is hidden whenever the focused window reaches the top edge of the screen.
       </description>
     </key>
+    <key name="loads-position" type="s">
+      <default>'left'</default>
+      <summary>System load display position</summary>
+      <description>
+        Controls whether system load columns are shown on the left side of the top bar or before the right-side system icons.
+      </description>
+    </key>
+    <key name="show-load-cpu" type="b">
+      <default>false</default>
+      <summary>Show CPU load</summary>
+      <description>When enabled, show CPU usage as a top-bar column.</description>
+    </key>
+    <key name="show-load-mem" type="b">
+      <default>false</default>
+      <summary>Show memory load</summary>
+      <description>When enabled, show memory usage as a top-bar column.</description>
+    </key>
+    <key name="show-load-swap" type="b">
+      <default>false</default>
+      <summary>Show swap load</summary>
+      <description>When enabled, show swap usage as a top-bar column.</description>
+    </key>
+    <key name="show-load-igpu" type="b">
+      <default>false</default>
+      <summary>Show integrated GPU load</summary>
+      <description>When enabled, show integrated GPU usage when the driver exposes it.</description>
+    </key>
+    <key name="show-load-dgpu" type="b">
+      <default>false</default>
+      <summary>Show discrete GPU load</summary>
+      <description>When enabled, show discrete GPU usage when the driver exposes it.</description>
+    </key>
+    <key name="temps-position" type="s">
+      <default>'left'</default>
+      <summary>Temperature display position</summary>
+      <description>
+        Controls whether temperature columns are shown after the load columns on the left side or before the load columns on the right side.
+      </description>
+    </key>
+    <key name="show-temp-cpu" type="b">
+      <default>false</default>
+      <summary>Show CPU temperature</summary>
+      <description>When enabled, show CPU temperature in Celsius when available.</description>
+    </key>
+    <key name="show-temp-igpu" type="b">
+      <default>false</default>
+      <summary>Show integrated GPU temperature</summary>
+      <description>When enabled, show integrated GPU temperature in Celsius when available.</description>
+    </key>
+    <key name="show-temp-dgpu" type="b">
+      <default>false</default>
+      <summary>Show discrete GPU temperature</summary>
+      <description>When enabled, show discrete GPU temperature in Celsius when available.</description>
+    </key>
   </schema>
 </schemalist>

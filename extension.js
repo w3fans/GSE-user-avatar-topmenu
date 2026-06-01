@@ -13,6 +13,426 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
 const INHIBIT_IDLE_FLAG = 8;
+const METRICS_REFRESH_SECONDS = 2;
+const LOAD_KEYS = [
+    'show-load-cpu',
+    'show-load-mem',
+    'show-load-swap',
+    'show-load-igpu',
+    'show-load-dgpu',
+];
+const TEMP_KEYS = [
+    'show-temp-cpu',
+    'show-temp-igpu',
+    'show-temp-dgpu',
+];
+
+function readTextFile(path) {
+    try {
+        const [ok, contents] = Gio.File.new_for_path(path).load_contents(null);
+
+        if (ok)
+            return new TextDecoder().decode(contents).trim();
+    } catch (_error) {
+        return null;
+    }
+
+    return null;
+}
+
+function readNumberFile(path) {
+    const value = readTextFile(path);
+    return value === null ? null : Number.parseInt(value, 10);
+}
+
+function listDirectory(path) {
+    const names = [];
+
+    try {
+        const enumerator = Gio.File.new_for_path(path).enumerate_children(
+            'standard::name',
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
+        let info;
+
+        while ((info = enumerator.next_file(null)))
+            names.push(info.get_name());
+
+        enumerator.close(null);
+    } catch (_error) {
+        return names;
+    }
+
+    return names;
+}
+
+function formatPercent(value) {
+    return value === null || Number.isNaN(value) ? '--' : `${Math.round(value)}%`;
+}
+
+function formatGiB(kib) {
+    return `${Math.round(kib / 1024 / 1024)}GB`;
+}
+
+function formatBytes(bytes) {
+    if (bytes === null || Number.isNaN(bytes))
+        return '--';
+
+    return `${Math.round(bytes / 1024 / 1024 / 1024)}GB`;
+}
+
+function parseMeminfo() {
+    const contents = readTextFile('/proc/meminfo');
+    const values = {};
+
+    if (!contents)
+        return values;
+
+    for (const line of contents.split('\n')) {
+        const match = line.match(/^([^:]+):\s+(\d+)/);
+
+        if (match)
+            values[match[1]] = Number.parseInt(match[2], 10);
+    }
+
+    return values;
+}
+
+function parseCpuStat() {
+    const line = readTextFile('/proc/stat')?.split('\n')[0];
+
+    if (!line?.startsWith('cpu '))
+        return null;
+
+    const values = line.trim().split(/\s+/).slice(1).map(value => Number.parseInt(value, 10));
+    const idle = (values[3] ?? 0) + (values[4] ?? 0);
+    const total = values.reduce((sum, value) => sum + value, 0);
+
+    return {idle, total};
+}
+
+function getCpuModel() {
+    const contents = readTextFile('/proc/cpuinfo');
+    const match = contents?.match(/^model name\s+:\s+(.+)$/m);
+
+    return match?.[1] ?? GLib.get_host_name();
+}
+
+function getGpuDevices() {
+    const devices = [];
+
+    for (const card of listDirectory('/sys/class/drm').filter(name => /^card\d+$/.test(name))) {
+        const devicePath = `/sys/class/drm/${card}/device`;
+        const vendor = readTextFile(`${devicePath}/vendor`);
+
+        if (!vendor)
+            continue;
+
+        devices.push({
+            card,
+            path: devicePath,
+            type: vendor.toLowerCase() === '0x8086' ? 'igpu' : 'dgpu',
+            name: readTextFile(`${devicePath}/device`) ?? card,
+        });
+    }
+
+    return devices;
+}
+
+function getGpuByType(type) {
+    return getGpuDevices().find(device => device.type === type) ?? null;
+}
+
+function getGpuMetrics(type) {
+    const device = getGpuByType(type);
+
+    if (!device)
+        return null;
+
+    const busy = readNumberFile(`${device.path}/gpu_busy_percent`);
+    const used = readNumberFile(`${device.path}/mem_info_vram_used`);
+    const total = readNumberFile(`${device.path}/mem_info_vram_total`);
+    const usage = used !== null && total ? used / total * 100 : busy;
+
+    return {
+        label: `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
+        tooltip: [
+            `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
+            total ? `${formatBytes(used)}/${formatBytes(total)}` : device.name,
+        ].join('\n'),
+    };
+}
+
+function getHwmonTemperature(devicePath) {
+    for (const hwmon of listDirectory(`${devicePath}/hwmon`)) {
+        const hwmonPath = `${devicePath}/hwmon/${hwmon}`;
+
+        for (const fileName of listDirectory(hwmonPath).filter(name => /^temp\d+_input$/.test(name))) {
+            const value = readNumberFile(`${hwmonPath}/${fileName}`);
+
+            if (value !== null)
+                return Math.round(value / 1000);
+        }
+    }
+
+    return null;
+}
+
+function getGpuTemperature(type) {
+    const device = getGpuByType(type);
+
+    if (!device)
+        return null;
+
+    return getHwmonTemperature(device.path);
+}
+
+function getCpuTemperature() {
+    for (const hwmon of listDirectory('/sys/class/hwmon')) {
+        const hwmonPath = `/sys/class/hwmon/${hwmon}`;
+        const labels = listDirectory(hwmonPath).filter(name => /^temp\d+_label$/.test(name));
+        const preferred = labels.find(label => {
+            const text = readTextFile(`${hwmonPath}/${label}`)?.toLowerCase() ?? '';
+            return text.includes('package') || text.includes('tctl') || text.includes('cpu');
+        });
+        const inputName = preferred?.replace('_label', '_input') ??
+            listDirectory(hwmonPath).find(name => /^temp\d+_input$/.test(name));
+        const value = inputName ? readNumberFile(`${hwmonPath}/${inputName}`) : null;
+
+        if (value !== null)
+            return Math.round(value / 1000);
+    }
+
+    for (const zone of listDirectory('/sys/class/thermal')) {
+        const zonePath = `/sys/class/thermal/${zone}`;
+        const type = readTextFile(`${zonePath}/type`)?.toLowerCase() ?? '';
+
+        if (!type.includes('cpu') && !type.includes('x86_pkg_temp'))
+            continue;
+
+        const value = readNumberFile(`${zonePath}/temp`);
+
+        if (value !== null)
+            return Math.round(value / 1000);
+    }
+
+    return null;
+}
+
+const SystemMetricsButton = GObject.registerClass(
+class SystemMetricsButton extends PanelMenu.Button {
+    _init(settings, side) {
+        super._init(0.0, `Username Avatar ${side} Metrics`, false);
+
+        this._settings = settings;
+        this._side = side;
+        this._cpuModel = getCpuModel();
+        this._previousCpuStat = parseCpuStat();
+        this._box = new St.BoxLayout({
+            style_class: 'user-topmenu-metrics-box',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._box.spacing = 8;
+        this.add_child(this._box);
+        this.menu.actor.visible = false;
+        this._tooltip = new St.Label({
+            style_class: 'user-topmenu-metric-tooltip',
+            visible: false,
+        });
+        Main.uiGroup.add_child(this._tooltip);
+
+        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||
+                key === 'loads-position' || key === 'temps-position')
+                this._refresh();
+        });
+        this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, METRICS_REFRESH_SECONDS, () => {
+            this._refresh();
+            return GLib.SOURCE_CONTINUE;
+        });
+        GLib.Source.set_name_by_id(this._timeoutId, `[${this.constructor.name}] refresh`);
+
+        this._refresh();
+    }
+
+    destroy() {
+        if (this._timeoutId) {
+            GLib.Source.remove(this._timeoutId);
+            this._timeoutId = null;
+        }
+
+        if (this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = null;
+        }
+
+        this._tooltip?.destroy();
+        this._tooltip = null;
+
+        super.destroy();
+    }
+
+    _refresh() {
+        this._box.destroy_all_children();
+
+        const items = this._side === 'left'
+            ? [...this._getItemsForGroup('loads'), ...this._getItemsForGroup('temps')]
+            : [...this._getItemsForGroup('temps'), ...this._getItemsForGroup('loads')];
+
+        for (const item of items)
+            this._box.add_child(this._createMetricLabel(item));
+
+        this.visible = items.length > 0;
+    }
+
+    _getItemsForGroup(group) {
+        if (this._settings.get_string(`${group}-position`) !== this._side)
+            return [];
+
+        return group === 'loads' ? this._getLoadItems() : this._getTempItems();
+    }
+
+    _getLoadItems() {
+        const items = [];
+
+        if (this._settings.get_boolean('show-load-cpu'))
+            items.push(this._getCpuLoadItem());
+
+        if (this._settings.get_boolean('show-load-mem'))
+            items.push(this._getMemoryItem());
+
+        if (this._settings.get_boolean('show-load-swap'))
+            items.push(this._getSwapItem());
+
+        if (this._settings.get_boolean('show-load-igpu'))
+            items.push(getGpuMetrics('igpu') ?? {label: 'iGPU --', tooltip: 'iGPU unavailable'});
+
+        if (this._settings.get_boolean('show-load-dgpu'))
+            items.push(getGpuMetrics('dgpu') ?? {label: 'dGPU --', tooltip: 'dGPU unavailable'});
+
+        return items;
+    }
+
+    _getTempItems() {
+        const items = [];
+
+        if (this._settings.get_boolean('show-temp-cpu')) {
+            const temp = getCpuTemperature();
+            items.push({
+                label: `CPU ${temp === null ? '--' : temp}C`,
+                tooltip: `CPU ${temp === null ? 'unavailable' : `${temp}C`}\n${this._cpuModel}`,
+            });
+        }
+
+        if (this._settings.get_boolean('show-temp-igpu')) {
+            const temp = getGpuTemperature('igpu');
+            items.push({
+                label: `iGPU ${temp === null ? '--' : temp}C`,
+                tooltip: `iGPU ${temp === null ? 'unavailable' : `${temp}C`}`,
+            });
+        }
+
+        if (this._settings.get_boolean('show-temp-dgpu')) {
+            const temp = getGpuTemperature('dgpu');
+            items.push({
+                label: `dGPU ${temp === null ? '--' : temp}C`,
+                tooltip: `dGPU ${temp === null ? 'unavailable' : `${temp}C`}`,
+            });
+        }
+
+        return items;
+    }
+
+    _getCpuLoadItem() {
+        const current = parseCpuStat();
+        let percent = null;
+
+        if (current && this._previousCpuStat) {
+            const totalDelta = current.total - this._previousCpuStat.total;
+            const idleDelta = current.idle - this._previousCpuStat.idle;
+
+            if (totalDelta > 0)
+                percent = (1 - idleDelta / totalDelta) * 100;
+        }
+
+        if (current)
+            this._previousCpuStat = current;
+
+        return {
+            label: `CPU ${formatPercent(percent)}`,
+            tooltip: `CPU ${formatPercent(percent)}\n${this._cpuModel}`,
+        };
+    }
+
+    _getMemoryItem() {
+        const meminfo = parseMeminfo();
+        const total = meminfo.MemTotal ?? 0;
+        const available = meminfo.MemAvailable ?? 0;
+        const used = Math.max(total - available, 0);
+        const percent = total ? used / total * 100 : null;
+
+        return {
+            label: `MEM ${formatPercent(percent)}`,
+            tooltip: `MEM ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
+        };
+    }
+
+    _getSwapItem() {
+        const meminfo = parseMeminfo();
+        const total = meminfo.SwapTotal ?? 0;
+        const free = meminfo.SwapFree ?? 0;
+        const used = Math.max(total - free, 0);
+        const percent = total ? used / total * 100 : null;
+
+        return {
+            label: `SWAP ${formatPercent(percent)}`,
+            tooltip: `SWAP ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
+        };
+    }
+
+    _createMetricLabel(item) {
+        const label = new St.Label({
+            text: item.label,
+            style_class: 'user-topmenu-metric-label',
+            reactive: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        label.connect('enter-event', () => {
+            this._showTooltip(label, item.tooltip);
+        });
+        label.connect('leave-event', () => {
+            this._hideTooltip();
+        });
+        return label;
+    }
+
+    _showTooltip(actor, text) {
+        if (!this._tooltip)
+            return;
+
+        this._tooltip.set_text(text);
+        this._tooltip.visible = true;
+
+        const [actorX, actorY] = actor.get_transformed_position();
+        const [actorWidth, actorHeight] = actor.get_transformed_size();
+        const [, tooltipWidth] = this._tooltip.get_preferred_width(-1);
+        const monitor = Main.layoutManager.primaryMonitor;
+        const x = Math.min(
+            Math.max(actorX + actorWidth / 2 - tooltipWidth / 2, monitor.x + 8),
+            monitor.x + monitor.width - tooltipWidth - 8
+        );
+        const y = actorY + actorHeight + 8;
+
+        this._tooltip.set_position(Math.round(x), Math.round(y));
+    }
+
+    _hideTooltip() {
+        if (this._tooltip)
+            this._tooltip.visible = false;
+    }
+});
 
 const UserQuickToggle = GObject.registerClass(
 class UserQuickToggle extends QuickSettings.QuickMenuToggle {
@@ -872,7 +1292,9 @@ export default class UsernameAvatarExtension extends Extension {
                 key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
                 key === 'quick-settings-toggle-topbar-only' ||
                 key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
-                key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
+                key === 'hide-topbar-maximized' || key === 'hide-topbar-touching' ||
+                LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||
+                key === 'loads-position' || key === 'temps-position')
                 this._refreshQuickSettingsMenu();
 
             if (key === 'show-topbar')
@@ -897,6 +1319,7 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._trackFocusWindow();
         this._rebuildButton();
+        this._addMetricsButtons();
         this._addQuickSettingsMenu();
         this._refreshQuickSettingsMenu();
         this._syncInhibitor();
@@ -923,6 +1346,7 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._releaseInhibitor();
         this._setPanelAutohide(false);
+        this._removeMetricsButtons();
         this._removeQuickSettingsMenu();
         this._button?.destroy();
         this._button = null;
@@ -938,6 +1362,22 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._button = new UserTopMenuButton(this._settings);
         Main.panel.addToStatusArea(this.uuid, this._button, this._getPanelPosition(), 'left');
+    }
+
+    _addMetricsButtons() {
+        this._removeMetricsButtons();
+
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
+        Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
+        Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
+    }
+
+    _removeMetricsButtons() {
+        this._leftMetrics?.destroy();
+        this._rightMetrics?.destroy();
+        this._leftMetrics = null;
+        this._rightMetrics = null;
     }
 
     _getPanelPosition() {

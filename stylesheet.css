@@ -10,3 +10,14 @@
 .user-topmenu-state-icon:active {
     color: #f6b73c;
 }
+
+.user-topmenu-metric-label {
+    font-weight: bold;
+}
+
+.user-topmenu-metric-tooltip {
+    background-color: rgba(36, 36, 36, 0.94);
+    border-radius: 6px;
+    color: white;
+    padding: 8px 10px;
+}
