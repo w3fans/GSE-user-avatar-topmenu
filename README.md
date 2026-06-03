@@ -3,18 +3,6 @@
 GNOME Shell extension that shows your avatar and username in the top bar.
 It can also show the computer name, keep the session awake, hide the top bar for fullscreen or maximized windows, and add an optional user tile in quick settings for preferences and session actions.
 
-## Codex / New Thread Workflow
-
-When starting a new thread on this project, use these steps so the work stays predictable:
-
-1. Work from the project root: `/www/gnome/us_TopMenu` or `/app/gnome/us_TopMenu`.
-2. Read `README.md`, `CHANGELOG.md`, `metadata.json`, `schemas/org.gnome.shell.extensions.username-avatar.gschema.xml`, `extension.js`, and `prefs.js` before changing behavior.
-3. Keep runtime code in `extension.js`, preferences UI in `prefs.js`, settings keys in the schema XML, and release notes in `CHANGELOG.md`.
-4. For every user-facing feature, add or update the matching Preferences control and schema key.
-5. Build locally with `gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .`.
-6. Release with `./release.sh vX.Y.Z "Release vX.Y.Z"` so `VERSION`, `metadata.json` version, the git tag, and `dist/` ZIP stay aligned.
-7. Do not ship generated `schemas/gschemas.compiled` inside release ZIPs.
-
 ## Features
 
 - Show avatar and display name in the left side of the top bar
