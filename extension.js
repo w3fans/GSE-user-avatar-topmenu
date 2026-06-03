@@ -466,22 +466,60 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _createLoadMetric(item) {
-        const outer = new St.Bin({
-            style_class: 'user-topmenu-load-column',
+        const metric = new St.BoxLayout({
+            style_class: 'user-topmenu-load-metric',
             reactive: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        outer.set_size(9, 18);
+        metric.spacing = 3;
 
-        const fillHeight = Math.max(2, Math.round((item.percent ?? 0) / 100 * 18));
+        const shortLabel = new St.Label({
+            text: this._getLoadShortName(item.name),
+            style_class: 'user-topmenu-load-label',
+            style: `color: ${item.color};`,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        const column = new St.BoxLayout({
+            style_class: 'user-topmenu-load-column',
+            vertical: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        column.set_size(9, 18);
+
+        const fillHeight = item.percent === null
+            ? 2
+            : Math.max(1, Math.round(item.percent / 100 * 18));
+        const spacer = new St.Widget();
+        spacer.set_size(9, 18 - fillHeight);
         const fill = new St.Widget({
             style: `background-color: ${item.color}; border-radius: 2px;`,
         });
         fill.set_size(9, fillHeight);
-        outer.set_child(fill);
-        outer.set_y_align(Clutter.ActorAlign.END);
-        outer.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
-        return outer;
+        column.add_child(spacer);
+        column.add_child(fill);
+
+        metric.add_child(shortLabel);
+        metric.add_child(column);
+        metric.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
+        return metric;
+    }
+
+    _getLoadShortName(name) {
+        switch (name) {
+        case 'CPU':
+            return 'C';
+        case 'MEM':
+            return 'M';
+        case 'SWAP':
+            return 'S';
+        case 'iGPU':
+            return 'i';
+        case 'dGPU':
+            return 'd';
+        default:
+            return name.slice(0, 1);
+        }
     }
 
     _createTempMetric(item) {

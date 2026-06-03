@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.3
+
+- Added compact identifiers beside load columns so CPU, memory, swap, iGPU and dGPU are easier to distinguish at a glance
+- Anchored load bars to the bottom so zero or low values no longer appear centered inside the column
+- Reduced the default Preferences window size again to make the frame feel tighter around the settings
+
+## 0.5.2
+
+- Removed internal workflow notes from the public README and changelog
+
 ## 0.5.1
 
 - Changed load metrics from text labels into compact colored capacity columns with hover details

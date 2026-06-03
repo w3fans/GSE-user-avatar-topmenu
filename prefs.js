@@ -12,7 +12,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const desktopInterfaceSettings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
         const touchpadSettings = new Gio.Settings({schema: 'org.gnome.desktop.peripherals.touchpad'});
 
-        window.set_default_size(760, 680);
+        window.set_default_size(700, 620);
 
         const generalPage = new Adw.PreferencesPage({
             title: 'General',
