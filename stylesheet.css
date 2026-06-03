@@ -11,7 +11,12 @@
     color: #f6b73c;
 }
 
-.user-topmenu-metric-label {
+.user-topmenu-load-column {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-radius: 2px;
+}
+
+.user-topmenu-temp-label {
     font-weight: bold;
 }
 

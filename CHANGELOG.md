@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+- Changed load metrics from text labels into compact colored capacity columns with hover details
+- Added color-coded thermometer-style temperature metrics with degree-symbol values
+- Reduced the default Preferences window size to avoid the overly padded feel
+
 ## 0.5.0
 
 - Added optional top-bar columns for CPU, memory, swap, iGPU and dGPU load, with separate enable switches and left/right placement

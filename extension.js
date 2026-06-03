@@ -26,6 +26,13 @@ const TEMP_KEYS = [
     'show-temp-igpu',
     'show-temp-dgpu',
 ];
+const LOAD_COLORS = {
+    cpu: '#62a0ea',
+    mem: '#57e389',
+    swap: '#f8e45c',
+    igpu: '#c061cb',
+    dgpu: '#ff7800',
+};
 
 function readTextFile(path) {
     try {
@@ -69,6 +76,26 @@ function listDirectory(path) {
 
 function formatPercent(value) {
     return value === null || Number.isNaN(value) ? '--' : `${Math.round(value)}%`;
+}
+
+function getRoundedPercent(value) {
+    return value === null || Number.isNaN(value) ? null : Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getTempColor(temp) {
+    if (temp === null || Number.isNaN(temp))
+        return '#9a9996';
+
+    if (temp < 40)
+        return '#57e389';
+
+    if (temp < 60)
+        return '#f8e45c';
+
+    if (temp < 75)
+        return '#ff7800';
+
+    return '#e01b24';
 }
 
 function formatGiB(kib) {
@@ -156,7 +183,10 @@ function getGpuMetrics(type) {
     const usage = used !== null && total ? used / total * 100 : busy;
 
     return {
-        label: `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
+        type: 'load',
+        name: type === 'igpu' ? 'iGPU' : 'dGPU',
+        percent: getRoundedPercent(usage),
+        color: LOAD_COLORS[type],
         tooltip: [
             `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
             total ? `${formatBytes(used)}/${formatBytes(total)}` : device.name,
@@ -306,10 +336,22 @@ class SystemMetricsButton extends PanelMenu.Button {
             items.push(this._getSwapItem());
 
         if (this._settings.get_boolean('show-load-igpu'))
-            items.push(getGpuMetrics('igpu') ?? {label: 'iGPU --', tooltip: 'iGPU unavailable'});
+            items.push(getGpuMetrics('igpu') ?? {
+                type: 'load',
+                name: 'iGPU',
+                percent: null,
+                color: LOAD_COLORS.igpu,
+                tooltip: 'iGPU unavailable',
+            });
 
         if (this._settings.get_boolean('show-load-dgpu'))
-            items.push(getGpuMetrics('dgpu') ?? {label: 'dGPU --', tooltip: 'dGPU unavailable'});
+            items.push(getGpuMetrics('dgpu') ?? {
+                type: 'load',
+                name: 'dGPU',
+                percent: null,
+                color: LOAD_COLORS.dgpu,
+                tooltip: 'dGPU unavailable',
+            });
 
         return items;
     }
@@ -320,24 +362,33 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (this._settings.get_boolean('show-temp-cpu')) {
             const temp = getCpuTemperature();
             items.push({
-                label: `CPU ${temp === null ? '--' : temp}C`,
-                tooltip: `CPU ${temp === null ? 'unavailable' : `${temp}C`}\n${this._cpuModel}`,
+                type: 'temp',
+                name: 'CPU',
+                temp,
+                color: getTempColor(temp),
+                tooltip: `CPU ${temp === null ? 'unavailable' : `${temp}°C`}\n${this._cpuModel}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-igpu')) {
             const temp = getGpuTemperature('igpu');
             items.push({
-                label: `iGPU ${temp === null ? '--' : temp}C`,
-                tooltip: `iGPU ${temp === null ? 'unavailable' : `${temp}C`}`,
+                type: 'temp',
+                name: 'iGPU',
+                temp,
+                color: getTempColor(temp),
+                tooltip: `iGPU ${temp === null ? 'unavailable' : `${temp}°C`}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-dgpu')) {
             const temp = getGpuTemperature('dgpu');
             items.push({
-                label: `dGPU ${temp === null ? '--' : temp}C`,
-                tooltip: `dGPU ${temp === null ? 'unavailable' : `${temp}C`}`,
+                type: 'temp',
+                name: 'dGPU',
+                temp,
+                color: getTempColor(temp),
+                tooltip: `dGPU ${temp === null ? 'unavailable' : `${temp}°C`}`,
             });
         }
 
@@ -360,7 +411,10 @@ class SystemMetricsButton extends PanelMenu.Button {
             this._previousCpuStat = current;
 
         return {
-            label: `CPU ${formatPercent(percent)}`,
+            type: 'load',
+            name: 'CPU',
+            percent: getRoundedPercent(percent),
+            color: LOAD_COLORS.cpu,
             tooltip: `CPU ${formatPercent(percent)}\n${this._cpuModel}`,
         };
     }
@@ -373,7 +427,10 @@ class SystemMetricsButton extends PanelMenu.Button {
         const percent = total ? used / total * 100 : null;
 
         return {
-            label: `MEM ${formatPercent(percent)}`,
+            type: 'load',
+            name: 'MEM',
+            percent: getRoundedPercent(percent),
+            color: LOAD_COLORS.mem,
             tooltip: `MEM ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
         };
     }
@@ -386,26 +443,72 @@ class SystemMetricsButton extends PanelMenu.Button {
         const percent = total ? used / total * 100 : null;
 
         return {
-            label: `SWAP ${formatPercent(percent)}`,
+            type: 'load',
+            name: 'SWAP',
+            percent: getRoundedPercent(percent),
+            color: LOAD_COLORS.swap,
             tooltip: `SWAP ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
         };
     }
 
     _createMetricLabel(item) {
-        const label = new St.Label({
-            text: item.label,
-            style_class: 'user-topmenu-metric-label',
+        const actor = item.type === 'temp'
+            ? this._createTempMetric(item)
+            : this._createLoadMetric(item);
+
+        actor.connect('enter-event', () => {
+            this._showTooltip(actor, item.tooltip);
+        });
+        actor.connect('leave-event', () => {
+            this._hideTooltip();
+        });
+        return actor;
+    }
+
+    _createLoadMetric(item) {
+        const outer = new St.Bin({
+            style_class: 'user-topmenu-load-column',
             reactive: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        outer.set_size(9, 18);
 
-        label.connect('enter-event', () => {
-            this._showTooltip(label, item.tooltip);
+        const fillHeight = Math.max(2, Math.round((item.percent ?? 0) / 100 * 18));
+        const fill = new St.Widget({
+            style: `background-color: ${item.color}; border-radius: 2px;`,
         });
-        label.connect('leave-event', () => {
-            this._hideTooltip();
+        fill.set_size(9, fillHeight);
+        outer.set_child(fill);
+        outer.set_y_align(Clutter.ActorAlign.END);
+        outer.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
+        return outer;
+    }
+
+    _createTempMetric(item) {
+        const box = new St.BoxLayout({
+            style_class: 'user-topmenu-temp-column',
+            reactive: true,
+            y_align: Clutter.ActorAlign.CENTER,
         });
-        return label;
+        box.spacing = 3;
+
+        const icon = new St.Icon({
+            icon_name: 'temperature-symbolic',
+            style: `color: ${item.color};`,
+            icon_size: 13,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const label = new St.Label({
+            text: item.temp === null ? '--°C' : `${item.temp}°C`,
+            style_class: 'user-topmenu-temp-label',
+            style: `color: ${item.color};`,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+
+        box.add_child(icon);
+        box.add_child(label);
+        box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : `${item.temp} degrees Celsius`}`;
+        return box;
     }
 
     _showTooltip(actor, text) {
