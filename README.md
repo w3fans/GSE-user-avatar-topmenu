@@ -53,6 +53,12 @@ gnome-extensions enable user-avatar-topmenu@basing.si
 
 Project version is stored in `VERSION`.
 
+Release version convention:
+
+- Even minor versions such as `0.4.x` and `0.6.x` are stable releases.
+- Odd minor versions such as `0.5.x` and `0.7.x` are beta/development releases.
+- Patch versions contain compatible fixes and refinements within the same release line.
+
 Create a patch release:
 
 ```bash

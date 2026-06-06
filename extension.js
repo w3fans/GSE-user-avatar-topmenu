@@ -263,7 +263,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             style_class: 'user-topmenu-metrics-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._box.spacing = 8;
+        this._box.spacing = 12;
         this.add_child(this._box);
         this.menu.actor.visible = false;
         this._tooltip = new St.Label({
@@ -306,14 +306,23 @@ class SystemMetricsButton extends PanelMenu.Button {
     _refresh() {
         this._box.destroy_all_children();
 
-        const items = this._side === 'left'
-            ? [...this._getItemsForGroup('loads'), ...this._getItemsForGroup('temps')]
-            : [...this._getItemsForGroup('temps'), ...this._getItemsForGroup('loads')];
+        const firstGroup = this._side === 'left'
+            ? this._getItemsForGroup('loads')
+            : this._getItemsForGroup('temps');
+        const secondGroup = this._side === 'left'
+            ? this._getItemsForGroup('temps')
+            : this._getItemsForGroup('loads');
 
-        for (const item of items)
+        for (const item of firstGroup)
             this._box.add_child(this._createMetricLabel(item));
 
-        this.visible = items.length > 0;
+        if (firstGroup.length > 0 && secondGroup.length > 0)
+            this._box.add_child(new St.Widget({width: 8}));
+
+        for (const item of secondGroup)
+            this._box.add_child(this._createMetricLabel(item));
+
+        this.visible = firstGroup.length + secondGroup.length > 0;
     }
 
     _getItemsForGroup(group) {
@@ -471,7 +480,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             reactive: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        metric.spacing = 3;
+        metric.spacing = 5;
 
         const shortLabel = new St.Label({
             text: this._getLoadShortName(item.name),
@@ -528,7 +537,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             reactive: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        box.spacing = 3;
+        box.spacing = 5;
 
         const icon = new St.Icon({
             icon_name: 'temperature-symbolic',

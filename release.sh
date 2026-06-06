@@ -11,6 +11,10 @@ Usage: ./release.sh [0.0.1|0.1.0|1.0.0|vX.Y.Z] ["tag message"]
 Defaults:
   increment   0.0.1
   tag message Release vX.Y.Z
+
+Version convention:
+  even minor  stable release, for example 0.6.x
+  odd minor   beta/development release, for example 0.5.x
 EOF
   exit 0
 fi

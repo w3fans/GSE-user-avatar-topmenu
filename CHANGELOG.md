@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Promoted the monitoring feature set from the `0.5.x` beta line to the stable `0.6.x` release line
+- Increased spacing between individual metrics and added a clearer gap between load and temperature groups
+- Documented the project convention that even minor versions are stable and odd minor versions are beta/development releases
+
 ## 0.5.3
 
 - Added compact identifiers beside load columns so CPU, memory, swap, iGPU and dGPU are easier to distinguish at a glance
