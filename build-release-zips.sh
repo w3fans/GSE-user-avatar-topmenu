@@ -42,6 +42,11 @@ for tag in "$@"; do
       --out-dir . \
       --extra-source prefs.js \
       --extra-source VERSION \
+      --extra-source icons/cpu-symbolic.svg \
+      --extra-source icons/memory-symbolic.svg \
+      --extra-source icons/swap-symbolic.svg \
+      --extra-source icons/igpu-symbolic.svg \
+      --extra-source icons/dgpu-symbolic.svg \
       --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml \
       .
 

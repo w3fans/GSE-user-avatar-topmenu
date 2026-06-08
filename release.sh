@@ -121,10 +121,17 @@ PY
 
 glib-compile-schemas "$schema_dir"
 rm -f "$bundle"
-gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema "$schema_xml" .
+gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION \
+  --extra-source icons/cpu-symbolic.svg \
+  --extra-source icons/memory-symbolic.svg \
+  --extra-source icons/swap-symbolic.svg \
+  --extra-source icons/igpu-symbolic.svg \
+  --extra-source icons/dgpu-symbolic.svg \
+  --schema "$schema_xml" .
 
 git add "$version_file" "$metadata_file" "$schema_xml"
 git add prefs.js extension.js stylesheet.css README.md CHANGELOG.md .gitignore
+git add icons
 
 git commit -m "chore(release): ${tag}"
 

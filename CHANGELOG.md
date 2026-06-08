@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1
+
+- Added clear symbolic icons for CPU, memory, swap, integrated GPU, and dedicated GPU metrics
+- Added explicit spacing around every load and temperature metric
+- Added NVIDIA load, VRAM, model, and temperature detection through `nvidia-smi`
+- Improved hybrid AMD and dedicated GPU classification
+
 ## 0.6.0
 
 - Promoted the monitoring feature set from the `0.5.x` beta line to the stable `0.6.x` release line

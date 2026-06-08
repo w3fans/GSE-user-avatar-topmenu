@@ -28,7 +28,15 @@ It can also show the computer name, keep the session awake, hide the top bar for
 ```bash
 git clone https://github.com/w3fans/GSE-user-avatar-topmenu.git
 cd GSE-user-avatar-topmenu
-gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+gnome-extensions pack --force --out-dir . \
+  --extra-source prefs.js \
+  --extra-source VERSION \
+  --extra-source icons/cpu-symbolic.svg \
+  --extra-source icons/memory-symbolic.svg \
+  --extra-source icons/swap-symbolic.svg \
+  --extra-source icons/igpu-symbolic.svg \
+  --extra-source icons/dgpu-symbolic.svg \
+  --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
 gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
 gnome-extensions enable user-avatar-topmenu@basing.si
 ```
@@ -43,7 +51,15 @@ gnome-extensions prefs user-avatar-topmenu@basing.si
 
 ```bash
 git pull
-gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+gnome-extensions pack --force --out-dir . \
+  --extra-source prefs.js \
+  --extra-source VERSION \
+  --extra-source icons/cpu-symbolic.svg \
+  --extra-source icons/memory-symbolic.svg \
+  --extra-source icons/swap-symbolic.svg \
+  --extra-source icons/igpu-symbolic.svg \
+  --extra-source icons/dgpu-symbolic.svg \
+  --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
 gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
 gnome-extensions disable user-avatar-topmenu@basing.si
 gnome-extensions enable user-avatar-topmenu@basing.si

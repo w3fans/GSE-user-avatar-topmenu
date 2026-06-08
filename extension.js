@@ -33,6 +33,8 @@ const LOAD_COLORS = {
     igpu: '#c061cb',
     dgpu: '#ff7800',
 };
+const NVIDIA_METRICS_CACHE_MS = 1500;
+let nvidiaMetricsCache = {timestamp: 0, value: null};
 
 function readTextFile(path) {
     try {
@@ -156,12 +158,24 @@ function getGpuDevices() {
         if (!vendor)
             continue;
 
+        const vendorId = vendor.toLowerCase();
+        const bootVga = readTextFile(`${devicePath}/boot_vga`) === '1';
+
         devices.push({
             card,
             path: devicePath,
-            type: vendor.toLowerCase() === '0x8086' ? 'igpu' : 'dgpu',
+            vendor: vendorId,
+            bootVga,
+            type: vendorId === '0x8086' ? 'igpu' : 'dgpu',
             name: readTextFile(`${devicePath}/device`) ?? card,
         });
+    }
+
+    if (devices.length > 1) {
+        for (const device of devices) {
+            if (device.vendor === '0x1002' && device.bootVga)
+                device.type = 'igpu';
+        }
     }
 
     return devices;
@@ -172,6 +186,20 @@ function getGpuByType(type) {
 }
 
 function getGpuMetrics(type) {
+    if (type === 'dgpu') {
+        const nvidia = getNvidiaMetrics();
+
+        if (nvidia) {
+            return {
+                type: 'load',
+                name: 'dGPU',
+                percent: getRoundedPercent(nvidia.usage),
+                color: LOAD_COLORS.dgpu,
+                tooltip: `dGPU ${formatPercent(nvidia.usage)}\n${nvidia.usedMiB}/${nvidia.totalMiB}MB · ${nvidia.name}`,
+            };
+        }
+    }
+
     const device = getGpuByType(type);
 
     if (!device)
@@ -194,6 +222,40 @@ function getGpuMetrics(type) {
     };
 }
 
+function getNvidiaMetrics() {
+    const now = GLib.get_monotonic_time() / 1000;
+
+    if (now - nvidiaMetricsCache.timestamp < NVIDIA_METRICS_CACHE_MS)
+        return nvidiaMetricsCache.value;
+
+    let value = null;
+
+    try {
+        const process = Gio.Subprocess.new([
+            'nvidia-smi',
+            '--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,name',
+            '--format=csv,noheader,nounits',
+        ], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
+        const [, stdout] = process.communicate_utf8(null, null);
+        const fields = stdout.trim().split('\n')[0]?.split(',').map(field => field.trim());
+
+        if (process.get_successful() && fields?.length >= 5) {
+            value = {
+                usage: Number.parseInt(fields[0], 10),
+                usedMiB: Number.parseInt(fields[1], 10),
+                totalMiB: Number.parseInt(fields[2], 10),
+                temp: Number.parseInt(fields[3], 10),
+                name: fields.slice(4).join(', '),
+            };
+        }
+    } catch (_error) {
+        value = null;
+    }
+
+    nvidiaMetricsCache = {timestamp: now, value};
+    return value;
+}
+
 function getHwmonTemperature(devicePath) {
     for (const hwmon of listDirectory(`${devicePath}/hwmon`)) {
         const hwmonPath = `${devicePath}/hwmon/${hwmon}`;
@@ -210,6 +272,13 @@ function getHwmonTemperature(devicePath) {
 }
 
 function getGpuTemperature(type) {
+    if (type === 'dgpu') {
+        const nvidia = getNvidiaMetrics();
+
+        if (nvidia && !Number.isNaN(nvidia.temp))
+            return nvidia.temp;
+    }
+
     const device = getGpuByType(type);
 
     if (!device)
@@ -252,11 +321,12 @@ function getCpuTemperature() {
 
 const SystemMetricsButton = GObject.registerClass(
 class SystemMetricsButton extends PanelMenu.Button {
-    _init(settings, side) {
+    _init(settings, side, extensionPath) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
         this._settings = settings;
         this._side = side;
+        this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._box = new St.BoxLayout({
@@ -478,14 +548,17 @@ class SystemMetricsButton extends PanelMenu.Button {
         const metric = new St.BoxLayout({
             style_class: 'user-topmenu-load-metric',
             reactive: true,
+            style: 'margin-left: 5px; margin-right: 5px;',
             y_align: Clutter.ActorAlign.CENTER,
         });
         metric.spacing = 5;
 
-        const shortLabel = new St.Label({
-            text: this._getLoadShortName(item.name),
-            style_class: 'user-topmenu-load-label',
+        const icon = new St.Icon({
+            gicon: new Gio.FileIcon({
+                file: Gio.File.new_for_path(`${this._extensionPath}/${this._getLoadIconName(item.name)}-symbolic.svg`),
+            }),
             style: `color: ${item.color};`,
+            icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -508,26 +581,26 @@ class SystemMetricsButton extends PanelMenu.Button {
         column.add_child(spacer);
         column.add_child(fill);
 
-        metric.add_child(shortLabel);
+        metric.add_child(icon);
         metric.add_child(column);
         metric.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
         return metric;
     }
 
-    _getLoadShortName(name) {
+    _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
-            return 'C';
+            return 'cpu';
         case 'MEM':
-            return 'M';
+            return 'memory';
         case 'SWAP':
-            return 'S';
+            return 'swap';
         case 'iGPU':
-            return 'i';
+            return 'igpu';
         case 'dGPU':
-            return 'd';
+            return 'dgpu';
         default:
-            return name.slice(0, 1);
+            return 'cpu';
         }
     }
 
@@ -535,6 +608,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         const box = new St.BoxLayout({
             style_class: 'user-topmenu-temp-column',
             reactive: true,
+            style: 'margin-left: 5px; margin-right: 5px;',
             y_align: Clutter.ActorAlign.CENTER,
         });
         box.spacing = 5;
@@ -1517,8 +1591,8 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
-        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
-        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
     }
