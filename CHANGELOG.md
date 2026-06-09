@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.4
+
+- Added a purpose-built metric icon set based on CPU, DIMM, swap, and GPU hardware shapes
+- Added distinct CPU-temperature and GPU-temperature icons
+- Added RAM type and populated DIMM count to the memory tooltip when exposed by EDAC or readable SMBIOS
+- Added detected iGPU and dGPU model information to temperature tooltips
+- Added themed-icon fallbacks when a manually built ZIP omits the custom metric assets
+
 ## 0.6.3
 
 - Prevented NVIDIA polling from probing or initializing a dormant or broken driver

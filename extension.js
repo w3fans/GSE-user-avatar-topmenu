@@ -36,6 +36,8 @@ const LOAD_COLORS = {
 const NVIDIA_METRICS_CACHE_MS = 5000;
 const NVIDIA_FAILURE_CACHE_MS = 60000;
 let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
+let memoryHardwareCache = null;
+const gpuNameCache = new Map();
 
 function readTextFile(path) {
     try {
@@ -163,6 +165,70 @@ function formatBytes(bytes) {
     return `${Math.round(bytes / 1024 / 1024 / 1024)}GB`;
 }
 
+function runCommand(argv) {
+    try {
+        const process = Gio.Subprocess.new(
+            argv,
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE
+        );
+        const [, stdout] = process.communicate_utf8(null, null);
+        return process.get_successful() ? stdout.trim() : '';
+    } catch (_error) {
+        return '';
+    }
+}
+
+function getMemoryHardwareInfo() {
+    if (memoryHardwareCache !== null)
+        return memoryHardwareCache;
+
+    const modules = [];
+
+    for (const controller of listDirectory('/sys/devices/system/edac/mc').filter(name => /^mc\d+$/.test(name))) {
+        const controllerPath = `/sys/devices/system/edac/mc/${controller}`;
+
+        for (const dimm of listDirectory(controllerPath).filter(name => /^dimm\d+$/.test(name))) {
+            const dimmPath = `${controllerPath}/${dimm}`;
+            const size = readNumberFile(`${dimmPath}/size`);
+
+            if (size > 0) {
+                modules.push({
+                    type: readTextFile(`${dimmPath}/dimm_mem_type`) ?? '',
+                    size: `${Math.round(size / 1024)}GB`,
+                });
+            }
+        }
+    }
+
+    if (modules.length === 0) {
+        const dmi = runCommand(['dmidecode', '--type', '17']);
+
+        for (const block of dmi.split(/\n\s*\n/)) {
+            const size = block.match(/^\s*Size:\s*(?!No Module Installed)(.+)$/m)?.[1];
+            if (!size)
+                continue;
+
+            modules.push({
+                type: block.match(/^\s*Type:\s*(.+)$/m)?.[1] ?? '',
+                size,
+            });
+        }
+    }
+
+    if (modules.length === 0) {
+        memoryHardwareCache = 'RAM hardware inventory unavailable';
+        return memoryHardwareCache;
+    }
+
+    const types = [...new Set(modules.map(module => module.type).filter(Boolean))];
+    const sizes = [...new Set(modules.map(module => module.size).filter(Boolean))];
+    memoryHardwareCache = [
+        `${modules.length} populated ${modules.length === 1 ? 'DIMM' : 'DIMMs'}${types.length ? ` · ${types.join('/')}` : ''}`,
+        sizes.length ? `Modules: ${sizes.join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+    return memoryHardwareCache;
+}
+
 function parseMeminfo() {
     const contents = readTextFile('/proc/meminfo');
     const values = {};
@@ -198,6 +264,21 @@ function getCpuModel() {
     const match = contents?.match(/^model name\s+:\s+(.+)$/m);
 
     return match?.[1] ?? GLib.get_host_name();
+}
+
+function getGpuDisplayName(device) {
+    if (!device)
+        return null;
+
+    if (gpuNameCache.has(device.path))
+        return gpuNameCache.get(device.path);
+
+    const properties = runCommand(['udevadm', 'info', '--query=property', `--path=${device.path}`]);
+    const model = properties.match(/^ID_MODEL_FROM_DATABASE=(.+)$/m)?.[1] ??
+        properties.match(/^ID_MODEL=(.+)$/m)?.[1] ??
+        device.name;
+    gpuNameCache.set(device.path, model);
+    return model;
 }
 
 function getGpuDevices() {
@@ -269,8 +350,9 @@ function getGpuMetrics(type) {
         color: LOAD_COLORS[type],
         tooltip: [
             `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
-            total ? `${formatBytes(used)}/${formatBytes(total)}` : device.name,
-        ].join('\n'),
+            total ? `${formatBytes(used)}/${formatBytes(total)}` : getGpuDisplayName(device),
+            total ? getGpuDisplayName(device) : '',
+        ].filter(Boolean).join('\n'),
     };
 }
 
@@ -357,6 +439,16 @@ function getGpuTemperature(type) {
     return getHwmonTemperature(device.path);
 }
 
+function getGpuDescription(type) {
+    if (type === 'dgpu') {
+        const nvidia = getNvidiaMetrics();
+        if (nvidia?.name)
+            return nvidia.name;
+    }
+
+    return getGpuDisplayName(getGpuByType(type)) ?? `${type === 'igpu' ? 'Integrated' : 'Dedicated'} GPU`;
+}
+
 function getCpuTemperature() {
     for (const hwmon of listDirectory('/sys/class/hwmon')) {
         const hwmonPath = `/sys/class/hwmon/${hwmon}`;
@@ -391,11 +483,12 @@ function getCpuTemperature() {
 
 const SystemMetricsButton = GObject.registerClass(
 class SystemMetricsButton extends PanelMenu.Button {
-    _init(settings, side) {
+    _init(settings, side, extensionPath) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
         this._settings = settings;
         this._side = side;
+        this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._box = new St.BoxLayout({
@@ -539,7 +632,7 @@ class SystemMetricsButton extends PanelMenu.Button {
                 name: 'iGPU',
                 temp,
                 color: getTempColor(temp),
-                tooltip: `iGPU ${temp === null ? 'unavailable' : formatted}`,
+                tooltip: `iGPU ${temp === null ? 'unavailable' : formatted}\n${getGpuDescription('igpu')}`,
             });
         }
 
@@ -551,7 +644,7 @@ class SystemMetricsButton extends PanelMenu.Button {
                 name: 'dGPU',
                 temp,
                 color: getTempColor(temp),
-                tooltip: `dGPU ${temp === null ? 'unavailable' : formatted}`,
+                tooltip: `dGPU ${temp === null ? 'unavailable' : formatted}\n${getGpuDescription('dgpu')}`,
             });
         }
 
@@ -594,7 +687,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             name: 'MEM',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.mem,
-            tooltip: `MEM ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
+            tooltip: `MEM ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}\n${getMemoryHardwareInfo()}`,
         };
     }
 
@@ -642,11 +735,11 @@ class SystemMetricsButton extends PanelMenu.Button {
         });
         iconBox.spacing = 2;
         const icon = new St.Icon({
-            icon_name: this._getLoadIconName(item.name),
             style: `color: ${item.color};`,
             icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._setMetricIcon(icon, this._getLoadIconName(item.name), this._getLoadFallbackIconName(item.name));
         iconBox.add_child(icon);
 
         const qualifier = this._getLoadIconQualifier(item.name);
@@ -686,17 +779,30 @@ class SystemMetricsButton extends PanelMenu.Button {
     _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
+            return 'metric-cpu-symbolic.svg';
+        case 'MEM':
+            return 'metric-memory-symbolic.svg';
+        case 'SWAP':
+            return 'metric-swap-symbolic.svg';
+        case 'iGPU':
+            return 'metric-gpu-symbolic.svg';
+        case 'dGPU':
+            return 'metric-gpu-symbolic.svg';
+        default:
+            return 'metric-cpu-symbolic.svg';
+        }
+    }
+
+    _getLoadFallbackIconName(name) {
+        switch (name) {
+        case 'CPU':
             return 'applications-system-symbolic';
         case 'MEM':
             return 'media-flash-symbolic';
         case 'SWAP':
             return 'object-flip-horizontal-symbolic';
-        case 'iGPU':
-            return 'video-display-symbolic';
-        case 'dGPU':
-            return 'video-display-symbolic';
         default:
-            return 'applications-system-symbolic';
+            return 'video-display-symbolic';
         }
     }
 
@@ -720,11 +826,15 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.spacing = 5;
 
         const icon = new St.Icon({
-            icon_name: 'temperature-symbolic',
             style: `color: ${item.color};`,
             icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._setMetricIcon(
+            icon,
+            item.name === 'CPU' ? 'metric-cpu-temp-symbolic.svg' : 'metric-gpu-temp-symbolic.svg',
+            'temperature-symbolic'
+        );
         const label = new St.Label({
             text: this._formatTemperature(item.temp),
             style_class: 'user-topmenu-temp-label',
@@ -736,6 +846,15 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.add_child(label);
         box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : this._formatTemperature(item.temp)}`;
         return box;
+    }
+
+    _setMetricIcon(icon, fileName, fallbackIconName) {
+        const path = `${this._extensionPath}/${fileName}`;
+
+        if (GLib.file_test(path, GLib.FileTest.EXISTS))
+            icon.gicon = new Gio.FileIcon({file: Gio.File.new_for_path(path)});
+        else
+            icon.icon_name = fallbackIconName;
     }
 
     _formatTemperature(temp) {
@@ -1736,8 +1855,8 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
-        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
-        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
     }
