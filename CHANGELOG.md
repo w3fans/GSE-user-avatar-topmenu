@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+- Added a configurable polling interval for load and temperature metrics
+- Added Celsius/Fahrenheit selection and optional decimal temperature values
+- Added automatic keep-awake triggers for focused fullscreen apps and active MPRIS media playback
+- Added selectable 15, 30, 60, and 120 minute keep-awake timers
+- Made the panel sun indicator reflect manual and automatic keep-awake activity
+
 ## 0.6.1
 
 - Added clear symbolic icons for CPU, memory, swap, integrated GPU, and dedicated GPU metrics

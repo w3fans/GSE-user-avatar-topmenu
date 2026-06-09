@@ -165,6 +165,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('loads-position', row.selected === 1 ? 'right' : 'left');
         });
         loadsGroup.add(loadsPositionRow);
+        this._addPollingIntervalRow(loadsGroup, settings);
         this._addBoundSwitch(loadsGroup, settings, 'show-load-cpu', 'CPU usage', 'Shows CPU load as a percentage column.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-mem', 'Memory usage', 'Shows memory utilization with used and total memory in the tooltip.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
@@ -190,6 +191,18 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('temps-position', row.selected === 1 ? 'right' : 'left');
         });
         tempsGroup.add(tempsPositionRow);
+        this._addPollingIntervalRow(tempsGroup, settings);
+        const temperatureUnitRow = new Adw.ComboRow({
+            title: 'Temperature unit',
+            subtitle: 'Choose Celsius or Fahrenheit for panel values and tooltips.',
+            model: Gtk.StringList.new(['Celsius (°C)', 'Fahrenheit (°F)']),
+            selected: settings.get_string('temperature-unit') === 'fahrenheit' ? 1 : 0,
+        });
+        temperatureUnitRow.connect('notify::selected', row => {
+            settings.set_string('temperature-unit', row.selected === 1 ? 'fahrenheit' : 'celsius');
+        });
+        tempsGroup.add(temperatureUnitRow);
+        this._addBoundSwitch(tempsGroup, settings, 'temperature-decimals', 'Show decimal values', 'Shows one decimal place for temperatures when the sensor provides it.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-cpu', 'CPU temperature', 'Shows the CPU package temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', 'Integrated GPU temperature', 'Shows iGPU temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', 'Discrete GPU temperature', 'Shows dGPU temperature when available.');
@@ -214,7 +227,28 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         awakeGroup.add(keepAwakeRow);
+        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-fullscreen', 'Automatic for fullscreen apps', 'Keeps the session awake while the focused app is fullscreen.');
+        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-media', 'Automatic while media is playing', 'Keeps the session awake while an MPRIS-compatible app reports playback.');
         awakePage.add(awakeGroup);
+
+        const timerGroup = new Adw.PreferencesGroup({
+            title: 'Timer',
+            description: 'Temporarily keep the session awake, then turn the timer off automatically.',
+        });
+        const timerDurations = [15, 30, 60, 120];
+        const timerMinutes = settings.get_uint('keep-awake-timer-minutes');
+        const timerDurationRow = new Adw.ComboRow({
+            title: 'Duration',
+            subtitle: 'Duration used whenever the timer is started.',
+            model: Gtk.StringList.new(['15 minutes', '30 minutes', '1 hour', '2 hours']),
+            selected: Math.max(0, timerDurations.indexOf(timerMinutes)),
+        });
+        timerDurationRow.connect('notify::selected', row => {
+            settings.set_uint('keep-awake-timer-minutes', timerDurations[row.selected] ?? 30);
+        });
+        timerGroup.add(timerDurationRow);
+        this._addBoundSwitch(timerGroup, settings, 'keep-awake-timer-active', 'Start keep-awake timer', 'Switch off to cancel early; it also switches off automatically when time expires.');
+        awakePage.add(timerGroup);
 
         const autohidePage = new Adw.PreferencesPage({
             title: 'Autohide',
@@ -279,7 +313,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, independent avatar and name visibility, keep-awake control, separate top-bar autohide rules for fullscreen, maximized, and top-edge windows, an optional quick settings user tile with session actions, and desktop convenience toggles for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, configurable load and temperature monitoring, manual and automatic keep-awake modes, separate top-bar autohide rules, an optional quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
@@ -345,6 +379,36 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
     _addBoundSwitch(group, settings, key, title, subtitle) {
         const row = new Adw.SwitchRow({title, subtitle});
         settings.bind(key, row, 'active', Gio.SettingsBindFlags.DEFAULT);
+        group.add(row);
+    }
+
+    _addPollingIntervalRow(group, settings) {
+        const row = new Adw.ActionRow({
+            title: 'Polling interval',
+            subtitle: 'Seconds between load and temperature updates.',
+        });
+        const adjustment = new Gtk.Adjustment({
+            lower: 1,
+            upper: 30,
+            step_increment: 1,
+            page_increment: 5,
+            value: settings.get_uint('metrics-refresh-seconds'),
+        });
+        const spin = new Gtk.SpinButton({
+            adjustment,
+            digits: 0,
+            valign: Gtk.Align.CENTER,
+        });
+        spin.connect('value-changed', widget => {
+            settings.set_uint('metrics-refresh-seconds', widget.get_value_as_int());
+        });
+        settings.connect('changed::metrics-refresh-seconds', () => {
+            const value = settings.get_uint('metrics-refresh-seconds');
+            if (spin.get_value_as_int() !== value)
+                spin.set_value(value);
+        });
+        row.add_suffix(spin);
+        row.activatable_widget = spin;
         group.add(row);
     }
 

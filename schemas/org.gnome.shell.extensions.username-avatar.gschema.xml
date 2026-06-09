@@ -30,6 +30,27 @@
         When enabled, the extension inhibits session idle so the screen saver does not activate.
       </description>
     </key>
+    <key name="keep-awake-fullscreen" type="b">
+      <default>false</default>
+      <summary>Keep awake for fullscreen apps</summary>
+      <description>When enabled, inhibit idle while the focused app is fullscreen.</description>
+    </key>
+    <key name="keep-awake-media" type="b">
+      <default>false</default>
+      <summary>Keep awake while media is playing</summary>
+      <description>When enabled, inhibit idle while an MPRIS media player reports playback.</description>
+    </key>
+    <key name="keep-awake-timer-active" type="b">
+      <default>false</default>
+      <summary>Keep-awake timer is active</summary>
+      <description>When enabled, inhibit idle until the selected timer duration expires.</description>
+    </key>
+    <key name="keep-awake-timer-minutes" type="u">
+      <range min="15" max="120"/>
+      <default>30</default>
+      <summary>Keep-awake timer duration</summary>
+      <description>Number of minutes used when the keep-awake timer is started.</description>
+    </key>
     <key name="place-after-navigation" type="b">
       <default>false</default>
       <summary>Place after Apps and Places</summary>
@@ -93,6 +114,12 @@
         Controls whether system load columns are shown on the left side of the top bar or before the right-side system icons.
       </description>
     </key>
+    <key name="metrics-refresh-seconds" type="u">
+      <range min="1" max="30"/>
+      <default>2</default>
+      <summary>System metrics polling interval</summary>
+      <description>Number of seconds between system load and temperature updates.</description>
+    </key>
     <key name="show-load-cpu" type="b">
       <default>false</default>
       <summary>Show CPU load</summary>
@@ -124,6 +151,20 @@
       <description>
         Controls whether temperature columns are shown after the load columns on the left side or before the load columns on the right side.
       </description>
+    </key>
+    <key name="temperature-unit" type="s">
+      <choices>
+        <choice value="celsius"/>
+        <choice value="fahrenheit"/>
+      </choices>
+      <default>'celsius'</default>
+      <summary>Temperature unit</summary>
+      <description>Controls whether temperatures are displayed in Celsius or Fahrenheit.</description>
+    </key>
+    <key name="temperature-decimals" type="b">
+      <default>false</default>
+      <summary>Show decimal temperatures</summary>
+      <description>When enabled, temperatures are displayed with one decimal place.</description>
     </key>
     <key name="show-temp-cpu" type="b">
       <default>false</default>

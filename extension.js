@@ -13,7 +13,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
 const INHIBIT_IDLE_FLAG = 8;
-const METRICS_REFRESH_SECONDS = 2;
+const KEEP_AWAKE_REFRESH_SECONDS = 5;
 const LOAD_KEYS = [
     'show-load-cpu',
     'show-load-mem',
@@ -98,6 +98,57 @@ function getTempColor(temp) {
         return '#ff7800';
 
     return '#e01b24';
+}
+
+function formatTemperature(temp, unit, decimals) {
+    if (temp === null || Number.isNaN(temp))
+        return unit === 'fahrenheit' ? '--°F' : '--°C';
+
+    const value = unit === 'fahrenheit' ? temp * 9 / 5 + 32 : temp;
+    return `${value.toFixed(decimals ? 1 : 0)}°${unit === 'fahrenheit' ? 'F' : 'C'}`;
+}
+
+function isMediaPlaying() {
+    try {
+        const namesResult = Gio.DBus.session.call_sync(
+            'org.freedesktop.DBus',
+            '/org/freedesktop/DBus',
+            'org.freedesktop.DBus',
+            'ListNames',
+            null,
+            new GLib.VariantType('(as)'),
+            Gio.DBusCallFlags.NONE,
+            1000,
+            null
+        );
+        const [names] = namesResult.recursiveUnpack();
+
+        for (const name of names.filter(value => value.startsWith('org.mpris.MediaPlayer2.'))) {
+            try {
+                const statusResult = Gio.DBus.session.call_sync(
+                    name,
+                    '/org/mpris/MediaPlayer2',
+                    'org.freedesktop.DBus.Properties',
+                    'Get',
+                    new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'PlaybackStatus']),
+                    new GLib.VariantType('(v)'),
+                    Gio.DBusCallFlags.NONE,
+                    500,
+                    null
+                );
+                const [status] = statusResult.recursiveUnpack();
+
+                if (status === 'Playing')
+                    return true;
+            } catch (_error) {
+                // Players can disappear between listing and querying them.
+            }
+        }
+    } catch (_error) {
+        return false;
+    }
+
+    return false;
 }
 
 function formatGiB(kib) {
@@ -264,7 +315,7 @@ function getHwmonTemperature(devicePath) {
             const value = readNumberFile(`${hwmonPath}/${fileName}`);
 
             if (value !== null)
-                return Math.round(value / 1000);
+                return value / 1000;
         }
     }
 
@@ -300,7 +351,7 @@ function getCpuTemperature() {
         const value = inputName ? readNumberFile(`${hwmonPath}/${inputName}`) : null;
 
         if (value !== null)
-            return Math.round(value / 1000);
+            return value / 1000;
     }
 
     for (const zone of listDirectory('/sys/class/thermal')) {
@@ -313,7 +364,7 @@ function getCpuTemperature() {
         const value = readNumberFile(`${zonePath}/temp`);
 
         if (value !== null)
-            return Math.round(value / 1000);
+            return value / 1000;
     }
 
     return null;
@@ -344,16 +395,28 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||
-                key === 'loads-position' || key === 'temps-position')
+                key === 'loads-position' || key === 'temps-position' ||
+                key === 'temperature-unit' || key === 'temperature-decimals')
                 this._refresh();
+
+            if (key === 'metrics-refresh-seconds')
+                this._startRefreshTimer();
         });
-        this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, METRICS_REFRESH_SECONDS, () => {
+        this._startRefreshTimer();
+
+        this._refresh();
+    }
+
+    _startRefreshTimer() {
+        if (this._timeoutId)
+            GLib.Source.remove(this._timeoutId);
+
+        const seconds = this._settings.get_uint('metrics-refresh-seconds');
+        this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
             this._refresh();
             return GLib.SOURCE_CONTINUE;
         });
         GLib.Source.set_name_by_id(this._timeoutId, `[${this.constructor.name}] refresh`);
-
-        this._refresh();
     }
 
     destroy() {
@@ -440,34 +503,37 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         if (this._settings.get_boolean('show-temp-cpu')) {
             const temp = getCpuTemperature();
+            const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
                 name: 'CPU',
                 temp,
                 color: getTempColor(temp),
-                tooltip: `CPU ${temp === null ? 'unavailable' : `${temp}°C`}\n${this._cpuModel}`,
+                tooltip: `CPU ${temp === null ? 'unavailable' : formatted}\n${this._cpuModel}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-igpu')) {
             const temp = getGpuTemperature('igpu');
+            const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
                 name: 'iGPU',
                 temp,
                 color: getTempColor(temp),
-                tooltip: `iGPU ${temp === null ? 'unavailable' : `${temp}°C`}`,
+                tooltip: `iGPU ${temp === null ? 'unavailable' : formatted}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-dgpu')) {
             const temp = getGpuTemperature('dgpu');
+            const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
                 name: 'dGPU',
                 temp,
                 color: getTempColor(temp),
-                tooltip: `dGPU ${temp === null ? 'unavailable' : `${temp}°C`}`,
+                tooltip: `dGPU ${temp === null ? 'unavailable' : formatted}`,
             });
         }
 
@@ -620,7 +686,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const label = new St.Label({
-            text: item.temp === null ? '--°C' : `${item.temp}°C`,
+            text: this._formatTemperature(item.temp),
             style_class: 'user-topmenu-temp-label',
             style: `color: ${item.color};`,
             y_align: Clutter.ActorAlign.CENTER,
@@ -628,8 +694,16 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         box.add_child(icon);
         box.add_child(label);
-        box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : `${item.temp} degrees Celsius`}`;
+        box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : this._formatTemperature(item.temp)}`;
         return box;
+    }
+
+    _formatTemperature(temp) {
+        return formatTemperature(
+            temp,
+            this._settings.get_string('temperature-unit'),
+            this._settings.get_boolean('temperature-decimals')
+        );
     }
 
     _showTooltip(actor, text) {
@@ -1335,12 +1409,13 @@ class UserTopMenuButton extends PanelMenu.Button {
 
     _syncKeepAwakeState() {
         const keepAwake = this._settings.get_boolean('keep-awake');
-        this._stateIcon.visible = keepAwake;
-        this._stateIconsBox.visible = keepAwake || this._isAutohideEnabled();
+        const effective = this._keepAwakeEffective ?? keepAwake;
+        this._stateIcon.visible = effective;
+        this._stateIconsBox.visible = effective || this._isAutohideEnabled();
         this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
         this._stateIcon.remove_style_pseudo_class('active');
 
-        if (keepAwake)
+        if (effective)
             this._stateIcon.add_style_pseudo_class('active');
 
         if (this._keepAwakeItem.state !== keepAwake)
@@ -1349,6 +1424,11 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._keepAwakeItem.label.remove_style_pseudo_class('active');
         if (keepAwake)
             this._keepAwakeItem.label.add_style_pseudo_class('active');
+    }
+
+    setKeepAwakeEffective(active) {
+        this._keepAwakeEffective = active;
+        this._syncKeepAwakeState();
     }
 
     _syncTopBarState() {
@@ -1505,9 +1585,17 @@ export default class UsernameAvatarExtension extends Extension {
             return;
 
         this._settings = this.getSettings();
+        this._mediaPlaying = false;
+        this._resetKeepAwakeTimer();
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
-            if (key === 'keep-awake')
+            if (key === 'keep-awake' || key === 'keep-awake-fullscreen' ||
+                key === 'keep-awake-media')
                 this._syncInhibitor();
+
+            if (key === 'keep-awake-timer-active' || key === 'keep-awake-timer-minutes') {
+                this._resetKeepAwakeTimer();
+                this._syncInhibitor();
+            }
 
             if (key === 'place-after-navigation')
                 this._rebuildButton();
@@ -1535,11 +1623,22 @@ export default class UsernameAvatarExtension extends Extension {
         });
         this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
             this._syncFullscreenPanelVisibility();
+            this._syncInhibitor();
         });
         this._focusWindowChangedId = global.display.connect('notify::focus-window', () => {
             this._trackFocusWindow();
             this._syncFullscreenPanelVisibility();
+            this._syncInhibitor();
         });
+        this._keepAwakeTimeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            KEEP_AWAKE_REFRESH_SECONDS,
+            () => {
+                this._refreshAutomaticKeepAwake();
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
+        GLib.Source.set_name_by_id(this._keepAwakeTimeoutId, `[${this.constructor.name}] keep-awake refresh`);
 
         this._trackFocusWindow();
         this._rebuildButton();
@@ -1566,6 +1665,11 @@ export default class UsernameAvatarExtension extends Extension {
             this._focusWindowChangedId = null;
         }
 
+        if (this._keepAwakeTimeoutId) {
+            GLib.Source.remove(this._keepAwakeTimeoutId);
+            this._keepAwakeTimeoutId = null;
+        }
+
         this._disconnectFocusWindowSignals();
 
         this._releaseInhibitor();
@@ -1586,6 +1690,7 @@ export default class UsernameAvatarExtension extends Extension {
 
         this._button = new UserTopMenuButton(this._settings);
         Main.panel.addToStatusArea(this.uuid, this._button, this._getPanelPosition(), 'left');
+        this._button.setKeepAwakeEffective(this._shouldKeepAwake());
     }
 
     _addMetricsButtons() {
@@ -1620,10 +1725,52 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _syncInhibitor() {
-        if (this._settings.get_boolean('keep-awake'))
+        const active = this._shouldKeepAwake();
+        this._button?.setKeepAwakeEffective(active);
+
+        if (active)
             this._inhibitIdle();
         else
             this._releaseInhibitor();
+    }
+
+    _shouldKeepAwake() {
+        const manual = this._settings.get_boolean('keep-awake');
+        const fullscreen = this._settings.get_boolean('keep-awake-fullscreen') &&
+            Boolean(this._focusWindow?.fullscreen);
+        const media = this._settings.get_boolean('keep-awake-media') && this._mediaPlaying;
+        const timer = this._isKeepAwakeTimerActive();
+
+        return manual || fullscreen || media || timer;
+    }
+
+    _refreshAutomaticKeepAwake() {
+        if (!this._settings)
+            return;
+
+        this._mediaPlaying = this._settings.get_boolean('keep-awake-media') && isMediaPlaying();
+
+        if (this._settings.get_boolean('keep-awake-timer-active') &&
+            !this._isKeepAwakeTimerActive())
+            this._settings.set_boolean('keep-awake-timer-active', false);
+
+        this._syncInhibitor();
+    }
+
+    _resetKeepAwakeTimer() {
+        if (!this._settings?.get_boolean('keep-awake-timer-active')) {
+            this._keepAwakeTimerDeadline = null;
+            return;
+        }
+
+        const duration = this._settings.get_uint('keep-awake-timer-minutes') * 60 * 1000000;
+        this._keepAwakeTimerDeadline = GLib.get_monotonic_time() + duration;
+    }
+
+    _isKeepAwakeTimerActive() {
+        return this._settings?.get_boolean('keep-awake-timer-active') &&
+            this._keepAwakeTimerDeadline !== null &&
+            GLib.get_monotonic_time() < this._keepAwakeTimerDeadline;
     }
 
     _inhibitIdle() {
@@ -1731,6 +1878,7 @@ export default class UsernameAvatarExtension extends Extension {
             }),
             this._focusWindow.connect('notify::fullscreen', () => {
                 this._syncFullscreenPanelVisibility();
+                this._syncInhibitor();
             }),
             this._focusWindow.connect('position-changed', () => {
                 this._syncFullscreenPanelVisibility();

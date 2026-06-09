@@ -1,7 +1,7 @@
 # GSE User Avatar Top Menu
 
 GNOME Shell extension that shows your avatar and username in the top bar.
-It can also show the computer name, keep the session awake, hide the top bar for fullscreen or maximized windows, and add an optional user tile in quick settings for preferences and session actions.
+It can also show the computer name, monitor system loads and temperatures, keep the session awake manually or automatically, hide the top bar for fullscreen or maximized windows, and add an optional user tile in quick settings for preferences and session actions.
 
 ## Features
 
@@ -10,9 +10,12 @@ It can also show the computer name, keep the session awake, hide the top bar for
 - Optionally show the hostname with a computer icon
 - Optional placement after `Apps` and `Places`
 - Keep-awake toggle with a visible active-state icon
+- Automatic keep-awake for focused fullscreen apps or active MPRIS media playback
+- Keep-awake timer presets for 15, 30, 60, and 120 minutes
 - Quick settings submenu on the top right with the user name, `Open Preferences`, and `Log Out`
 - Optional `Show in top bar` toggle so the quick settings entry can stay available on its own
 - Optional CPU, memory, swap, iGPU, dGPU, CPU temperature, and GPU temperature columns on the left or right side of the top bar
+- Configurable metric polling interval, Celsius/Fahrenheit temperatures, and optional decimal values
 - GNOME 50 / Fedora 44 convenience toggles for primary paste and touchpad middle click
 - Preferences window with author, license, description, and installed version
 
