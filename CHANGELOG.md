@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0
+## 0.6.2
 
 - Added a configurable polling interval for load and temperature metrics
 - Added Celsius/Fahrenheit selection and optional decimal temperature values
