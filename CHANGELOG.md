@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.3
+
+- Prevented NVIDIA polling from probing or initializing a dormant or broken driver
+- Required an already loaded NVIDIA module, control device, and initialized GPU before running `nvidia-smi`
+- Added a one-minute retry delay after unavailable or failed NVIDIA checks
+- Limited successful NVIDIA polling to at most once every five seconds
+- Replaced packaged load icons with reliable built-in GNOME symbolic icons
+- Added compact `i` and `d` markers to distinguish integrated and dedicated GPU icons
+
 ## 0.6.2
 
 - Added a configurable polling interval for load and temperature metrics

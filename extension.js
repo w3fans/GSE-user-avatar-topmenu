@@ -33,8 +33,9 @@ const LOAD_COLORS = {
     igpu: '#c061cb',
     dgpu: '#ff7800',
 };
-const NVIDIA_METRICS_CACHE_MS = 1500;
-let nvidiaMetricsCache = {timestamp: 0, value: null};
+const NVIDIA_METRICS_CACHE_MS = 5000;
+const NVIDIA_FAILURE_CACHE_MS = 60000;
+let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
 
 function readTextFile(path) {
     try {
@@ -276,8 +277,22 @@ function getGpuMetrics(type) {
 function getNvidiaMetrics() {
     const now = GLib.get_monotonic_time() / 1000;
 
-    if (now - nvidiaMetricsCache.timestamp < NVIDIA_METRICS_CACHE_MS)
+    if (now - nvidiaMetricsCache.timestamp < nvidiaMetricsCache.ttl)
         return nvidiaMetricsCache.value;
+
+    // Never let polling initialize or probe a dormant NVIDIA driver. Calling
+    // nvidia-smi too early can repeatedly trigger a failing modprobe on
+    // unsupported or misconfigured hybrid-GPU systems.
+    const driverReady =
+        GLib.file_test('/sys/module/nvidia', GLib.FileTest.IS_DIR) &&
+        GLib.file_test('/dev/nvidiactl', GLib.FileTest.EXISTS) &&
+        GLib.file_test('/proc/driver/nvidia/gpus', GLib.FileTest.IS_DIR) &&
+        listDirectory('/proc/driver/nvidia/gpus').length > 0;
+
+    if (!driverReady) {
+        nvidiaMetricsCache = {timestamp: now, ttl: NVIDIA_FAILURE_CACHE_MS, value: null};
+        return null;
+    }
 
     let value = null;
 
@@ -303,7 +318,11 @@ function getNvidiaMetrics() {
         value = null;
     }
 
-    nvidiaMetricsCache = {timestamp: now, value};
+    nvidiaMetricsCache = {
+        timestamp: now,
+        ttl: value ? NVIDIA_METRICS_CACHE_MS : NVIDIA_FAILURE_CACHE_MS,
+        value,
+    };
     return value;
 }
 
@@ -372,12 +391,11 @@ function getCpuTemperature() {
 
 const SystemMetricsButton = GObject.registerClass(
 class SystemMetricsButton extends PanelMenu.Button {
-    _init(settings, side, extensionPath) {
+    _init(settings, side) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
         this._settings = settings;
         this._side = side;
-        this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._box = new St.BoxLayout({
@@ -619,14 +637,26 @@ class SystemMetricsButton extends PanelMenu.Button {
         });
         metric.spacing = 5;
 
+        const iconBox = new St.BoxLayout({
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        iconBox.spacing = 2;
         const icon = new St.Icon({
-            gicon: new Gio.FileIcon({
-                file: Gio.File.new_for_path(`${this._extensionPath}/${this._getLoadIconName(item.name)}-symbolic.svg`),
-            }),
+            icon_name: this._getLoadIconName(item.name),
             style: `color: ${item.color};`,
             icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        iconBox.add_child(icon);
+
+        const qualifier = this._getLoadIconQualifier(item.name);
+        if (qualifier) {
+            iconBox.add_child(new St.Label({
+                text: qualifier,
+                style: `color: ${item.color}; font-size: 8px; font-weight: bold;`,
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
 
         const column = new St.BoxLayout({
             style_class: 'user-topmenu-load-column',
@@ -647,7 +677,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         column.add_child(spacer);
         column.add_child(fill);
 
-        metric.add_child(icon);
+        metric.add_child(iconBox);
         metric.add_child(column);
         metric.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
         return metric;
@@ -656,18 +686,28 @@ class SystemMetricsButton extends PanelMenu.Button {
     _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
-            return 'cpu';
+            return 'applications-system-symbolic';
         case 'MEM':
-            return 'memory';
+            return 'media-flash-symbolic';
         case 'SWAP':
-            return 'swap';
+            return 'object-flip-horizontal-symbolic';
         case 'iGPU':
-            return 'igpu';
+            return 'video-display-symbolic';
         case 'dGPU':
-            return 'dgpu';
+            return 'video-display-symbolic';
         default:
-            return 'cpu';
+            return 'applications-system-symbolic';
         }
+    }
+
+    _getLoadIconQualifier(name) {
+        if (name === 'iGPU')
+            return 'i';
+
+        if (name === 'dGPU')
+            return 'd';
+
+        return '';
     }
 
     _createTempMetric(item) {
@@ -1696,8 +1736,8 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
-        this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
-        this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
     }
