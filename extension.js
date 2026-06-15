@@ -33,6 +33,14 @@ const LOAD_COLORS = {
     igpu: '#c061cb',
     dgpu: '#ff7800',
 };
+const METRIC_ICON_PATHS = {
+    cpu: 'M5 0h2v2h2V0h2v2h1a2 2 0 0 1 2 2v1h2v2h-2v2h2v2h-2v1a2 2 0 0 1-2 2h-1v2H9v-2H7v2H5v-2H4a2 2 0 0 1-2-2v-1H0V9h2V7H0V5h2V4a2 2 0 0 1 2-2h1V0zm0 5v6h6V5H5zm1 4h1V7h1v2h1V6h1v4H6V9z',
+    memory: 'M1 3h14v9H1V3zm2 2v4h2V5H3zm4 0v4h2V5H7zm4 0v4h2V5h-2zM2 13h2v2H2v-2zm3 0h2v2H5v-2zm4 0h2v2H9v-2zm3 0h2v2h-2v-2z',
+    swap: 'M2 1h9l3 3v11H2V1zm8 1v3h3l-3-3zM4 7v2h6L8 7h2l3 3-3 3H8l2-2H4V9H3l2-2h2L5 9H4V7z',
+    gpu: 'M1 3h13v10H4v2H2v-2H1V3zm2 2v6h9V5H3zm4.5 1A2.5 2.5 0 1 1 5 8.5 2.5 2.5 0 0 1 7.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
+    cpuTemp: 'M4 0h2v2h2V0h2v2h1a2 2 0 0 1 2 2v2h-2V5H5v6h2v2H4a2 2 0 0 1-2-2v-1H0V8h2V6H0V4h2a2 2 0 0 1 2-2V0zm6 5a2 2 0 0 1 2 2v3.2a3 3 0 1 1-4 0V7a2 2 0 0 1 2-2zm0 2v4.3a1.5 1.5 0 1 0 1 0V7a1 1 0 0 0-2 0h1z',
+    gpuTemp: 'M1 3h9v2H3v6h5v2H1V3zm5.5 3A2.5 2.5 0 1 1 4 8.5 2.5 2.5 0 0 1 6.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 5a2 2 0 0 1 2 2v3.2a3 3 0 1 1-4 0V7a2 2 0 0 1 2-2zm0 2v4.3a1.5 1.5 0 1 0 1 0V7h-1z',
+};
 const NVIDIA_METRICS_CACHE_MS = 5000;
 const NVIDIA_FAILURE_CACHE_MS = 60000;
 let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
@@ -109,6 +117,14 @@ function formatTemperature(temp, unit, decimals) {
 
     const value = unit === 'fahrenheit' ? temp * 9 / 5 + 32 : temp;
     return `${value.toFixed(decimals ? 1 : 0)}°${unit === 'fahrenheit' ? 'F' : 'C'}`;
+}
+
+function createMetricIcon(pathName, color) {
+    const path = METRIC_ICON_PATHS[pathName] ?? METRIC_ICON_PATHS.cpu;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="${color}" d="${path}"/></svg>`;
+    return new Gio.BytesIcon({
+        bytes: new GLib.Bytes(new TextEncoder().encode(svg)),
+    });
 }
 
 function isMediaPlaying() {
@@ -483,12 +499,11 @@ function getCpuTemperature() {
 
 const SystemMetricsButton = GObject.registerClass(
 class SystemMetricsButton extends PanelMenu.Button {
-    _init(settings, side, extensionPath) {
+    _init(settings, side) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
         this._settings = settings;
         this._side = side;
-        this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._box = new St.BoxLayout({
@@ -735,11 +750,10 @@ class SystemMetricsButton extends PanelMenu.Button {
         });
         iconBox.spacing = 2;
         const icon = new St.Icon({
-            style: `color: ${item.color};`,
+            gicon: createMetricIcon(this._getLoadIconName(item.name), item.color),
             icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._setMetricIcon(icon, this._getLoadIconName(item.name), this._getLoadFallbackIconName(item.name));
         iconBox.add_child(icon);
 
         const qualifier = this._getLoadIconQualifier(item.name);
@@ -779,30 +793,17 @@ class SystemMetricsButton extends PanelMenu.Button {
     _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
-            return 'metric-cpu-symbolic.svg';
+            return 'cpu';
         case 'MEM':
-            return 'metric-memory-symbolic.svg';
+            return 'memory';
         case 'SWAP':
-            return 'metric-swap-symbolic.svg';
+            return 'swap';
         case 'iGPU':
-            return 'metric-gpu-symbolic.svg';
+            return 'gpu';
         case 'dGPU':
-            return 'metric-gpu-symbolic.svg';
+            return 'gpu';
         default:
-            return 'metric-cpu-symbolic.svg';
-        }
-    }
-
-    _getLoadFallbackIconName(name) {
-        switch (name) {
-        case 'CPU':
-            return 'applications-system-symbolic';
-        case 'MEM':
-            return 'media-flash-symbolic';
-        case 'SWAP':
-            return 'object-flip-horizontal-symbolic';
-        default:
-            return 'video-display-symbolic';
+            return 'cpu';
         }
     }
 
@@ -826,15 +827,10 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.spacing = 5;
 
         const icon = new St.Icon({
-            style: `color: ${item.color};`,
+            gicon: createMetricIcon(item.name === 'CPU' ? 'cpuTemp' : 'gpuTemp', item.color),
             icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._setMetricIcon(
-            icon,
-            item.name === 'CPU' ? 'metric-cpu-temp-symbolic.svg' : 'metric-gpu-temp-symbolic.svg',
-            'temperature-symbolic'
-        );
         const label = new St.Label({
             text: this._formatTemperature(item.temp),
             style_class: 'user-topmenu-temp-label',
@@ -846,15 +842,6 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.add_child(label);
         box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : this._formatTemperature(item.temp)}`;
         return box;
-    }
-
-    _setMetricIcon(icon, fileName, fallbackIconName) {
-        const path = `${this._extensionPath}/${fileName}`;
-
-        if (GLib.file_test(path, GLib.FileTest.EXISTS))
-            icon.gicon = new Gio.FileIcon({file: Gio.File.new_for_path(path)});
-        else
-            icon.icon_name = fallbackIconName;
     }
 
     _formatTemperature(temp) {
@@ -1855,8 +1842,8 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
-        this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
-        this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
     }

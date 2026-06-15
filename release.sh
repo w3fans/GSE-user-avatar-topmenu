@@ -122,17 +122,10 @@ PY
 glib-compile-schemas "$schema_dir"
 rm -f "$bundle"
 gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION \
-  --extra-source metric-cpu-symbolic.svg \
-  --extra-source metric-memory-symbolic.svg \
-  --extra-source metric-swap-symbolic.svg \
-  --extra-source metric-gpu-symbolic.svg \
-  --extra-source metric-cpu-temp-symbolic.svg \
-  --extra-source metric-gpu-temp-symbolic.svg \
   --schema "$schema_xml" .
 
 git add "$version_file" "$metadata_file" "$schema_xml"
 git add prefs.js extension.js stylesheet.css README.md CHANGELOG.md .gitignore
-git add metric-*-symbolic.svg
 
 git commit -m "chore(release): ${tag}"
 
