@@ -114,11 +114,23 @@
         Controls whether system load columns are shown on the left side of the top bar or before the right-side system icons.
       </description>
     </key>
+    <key name="loads-refresh-seconds" type="u">
+      <range min="1" max="30"/>
+      <default>2</default>
+      <summary>System load polling interval</summary>
+      <description>Number of seconds between CPU, memory, swap, and GPU usage updates.</description>
+    </key>
     <key name="metrics-refresh-seconds" type="u">
       <range min="1" max="30"/>
       <default>2</default>
-      <summary>System metrics polling interval</summary>
-      <description>Number of seconds between system load and temperature updates.</description>
+      <summary>Legacy system metrics polling interval</summary>
+      <description>Legacy combined polling interval kept for compatibility with older versions. New versions use separate usage and temperature intervals.</description>
+    </key>
+    <key name="temps-refresh-seconds" type="u">
+      <range min="1" max="60"/>
+      <default>5</default>
+      <summary>Temperature polling interval</summary>
+      <description>Number of seconds between CPU and GPU temperature updates.</description>
     </key>
     <key name="show-load-cpu" type="b">
       <default>false</default>

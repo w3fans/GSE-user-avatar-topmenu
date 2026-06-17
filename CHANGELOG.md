@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.6
+
+- Reworked the CPU monitor icon so it no longer resembles a settings gear
+- Added no-prompt `sudo -n dmidecode -t 17` fallback for RAM type, locator, speed, and part number details
+- Added DRM engine-counter fallback for iGPU usage when `gpu_busy_percent` is unavailable
+- Split usage and temperature polling into separate Preferences controls and refresh timers
+- Updated the extension description for publication with the current monitoring and keep-awake features
+
 ## 0.6.5
 
 - Embedded the custom hardware icon vectors directly in the extension

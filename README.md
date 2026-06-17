@@ -15,7 +15,7 @@ It can also show the computer name, monitor system loads and temperatures, keep 
 - Quick settings submenu on the top right with the user name, `Open Preferences`, and `Log Out`
 - Optional `Show in top bar` toggle so the quick settings entry can stay available on its own
 - Optional CPU, memory, swap, iGPU, dGPU, CPU temperature, and GPU temperature columns on the left or right side of the top bar
-- Configurable metric polling interval, Celsius/Fahrenheit temperatures, and optional decimal values
+- Separate usage and temperature polling intervals, Celsius/Fahrenheit temperatures, and optional decimal values
 - GNOME 50 / Fedora 44 convenience toggles for primary paste and touchpad middle click
 - Preferences window with author, license, description, and installed version
 

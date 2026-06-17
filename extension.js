@@ -34,11 +34,11 @@ const LOAD_COLORS = {
     dgpu: '#ff7800',
 };
 const METRIC_ICON_PATHS = {
-    cpu: 'M5 0h2v2h2V0h2v2h1a2 2 0 0 1 2 2v1h2v2h-2v2h2v2h-2v1a2 2 0 0 1-2 2h-1v2H9v-2H7v2H5v-2H4a2 2 0 0 1-2-2v-1H0V9h2V7H0V5h2V4a2 2 0 0 1 2-2h1V0zm0 5v6h6V5H5zm1 4h1V7h1v2h1V6h1v4H6V9z',
+    cpu: 'M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1.5 8.5h1.4l1-3 1.4 4 1.2-3h2V7h-3L8.4 9.7 6.9 5.5l-1.2 3.5H4.5v1.5zM4 0h1v1H4V0zm3 0h1v1H7V0zm3 0h1v1h-1V0zM4 15h1v1H4v-1zm3 0h1v1H7v-1zm3 0h1v1h-1v-1zM0 4h1v1H0V4zm0 3h1v1H0V7zm0 3h1v1H0v-1zm15-6h1v1h-1V4zm0 3h1v1h-1V7zm0 3h1v1h-1v-1z',
     memory: 'M1 3h14v9H1V3zm2 2v4h2V5H3zm4 0v4h2V5H7zm4 0v4h2V5h-2zM2 13h2v2H2v-2zm3 0h2v2H5v-2zm4 0h2v2H9v-2zm3 0h2v2h-2v-2z',
     swap: 'M2 1h9l3 3v11H2V1zm8 1v3h3l-3-3zM4 7v2h6L8 7h2l3 3-3 3H8l2-2H4V9H3l2-2h2L5 9H4V7z',
     gpu: 'M1 3h13v10H4v2H2v-2H1V3zm2 2v6h9V5H3zm4.5 1A2.5 2.5 0 1 1 5 8.5 2.5 2.5 0 0 1 7.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
-    cpuTemp: 'M4 0h2v2h2V0h2v2h1a2 2 0 0 1 2 2v2h-2V5H5v6h2v2H4a2 2 0 0 1-2-2v-1H0V8h2V6H0V4h2a2 2 0 0 1 2-2V0zm6 5a2 2 0 0 1 2 2v3.2a3 3 0 1 1-4 0V7a2 2 0 0 1 2-2zm0 2v4.3a1.5 1.5 0 1 0 1 0V7a1 1 0 0 0-2 0h1z',
+    cpuTemp: 'M3 2h8a1 1 0 0 1 1 1v3h-1V4H4v7h3v1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1-2h1v1H4V0zm3 0h1v1H7V0zM0 4h1v1H0V4zm0 3h1v1H0V7zm12 1a2 2 0 0 1 2 2v1.2a3 3 0 1 1-4 0V10a2 2 0 0 1 2-2zm0 2v2.3a1.5 1.5 0 1 0 1 0V10a1 1 0 0 0-2 0h1z',
     gpuTemp: 'M1 3h9v2H3v6h5v2H1V3zm5.5 3A2.5 2.5 0 1 1 4 8.5 2.5 2.5 0 0 1 6.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 5a2 2 0 0 1 2 2v3.2a3 3 0 1 1-4 0V7a2 2 0 0 1 2-2zm0 2v4.3a1.5 1.5 0 1 0 1 0V7h-1z',
 };
 const NVIDIA_METRICS_CACHE_MS = 5000;
@@ -217,7 +217,8 @@ function getMemoryHardwareInfo() {
     }
 
     if (modules.length === 0) {
-        const dmi = runCommand(['dmidecode', '--type', '17']);
+        const dmi = runCommand(['dmidecode', '--type', '17']) ||
+            runCommand(['sudo', '-n', 'dmidecode', '-t', '17']);
 
         for (const block of dmi.split(/\n\s*\n/)) {
             const size = block.match(/^\s*Size:\s*(?!No Module Installed)(.+)$/m)?.[1];
@@ -227,6 +228,10 @@ function getMemoryHardwareInfo() {
             modules.push({
                 type: block.match(/^\s*Type:\s*(.+)$/m)?.[1] ?? '',
                 size,
+                locator: block.match(/^\s*Locator:\s*(.+)$/m)?.[1] ?? '',
+                speed: block.match(/^\s*Configured Memory Speed:\s*(.+)$/m)?.[1] ??
+                    block.match(/^\s*Speed:\s*(.+)$/m)?.[1] ?? '',
+                part: block.match(/^\s*Part Number:\s*(.+)$/m)?.[1]?.trim() ?? '',
             });
         }
     }
@@ -237,10 +242,17 @@ function getMemoryHardwareInfo() {
     }
 
     const types = [...new Set(modules.map(module => module.type).filter(Boolean))];
-    const sizes = [...new Set(modules.map(module => module.size).filter(Boolean))];
+    const speeds = [...new Set(modules.map(module => module.speed).filter(Boolean))];
+    const moduleLines = modules.map(module => [
+        module.locator,
+        module.size,
+        module.speed,
+        module.part,
+    ].filter(Boolean).join(' · '));
     memoryHardwareCache = [
         `${modules.length} populated ${modules.length === 1 ? 'DIMM' : 'DIMMs'}${types.length ? ` · ${types.join('/')}` : ''}`,
-        sizes.length ? `Modules: ${sizes.join(', ')}` : '',
+        speeds.length ? `Speed: ${speeds.join('/')}` : '',
+        ...moduleLines.slice(0, 4),
     ].filter(Boolean).join('\n');
     return memoryHardwareCache;
 }
@@ -334,7 +346,32 @@ function getGpuByType(type) {
     return getGpuDevices().find(device => device.type === type) ?? null;
 }
 
-function getGpuMetrics(type) {
+function getGpuEngineStat(device) {
+    const engineRoots = [
+        `/sys/class/drm/${device.card}/engine`,
+        `${device.path}/engine`,
+    ];
+    let busy = 0;
+    let found = false;
+
+    for (const root of engineRoots) {
+        for (const engine of listDirectory(root)) {
+            const value = readNumberFile(`${root}/${engine}/busy`);
+
+            if (value !== null) {
+                busy += value;
+                found = true;
+            }
+        }
+
+        if (found)
+            return {busy, time: GLib.get_monotonic_time()};
+    }
+
+    return null;
+}
+
+function getGpuMetrics(type, previousStat = null) {
     if (type === 'dgpu') {
         const nvidia = getNvidiaMetrics();
 
@@ -357,13 +394,25 @@ function getGpuMetrics(type) {
     const busy = readNumberFile(`${device.path}/gpu_busy_percent`);
     const used = readNumberFile(`${device.path}/mem_info_vram_used`);
     const total = readNumberFile(`${device.path}/mem_info_vram_total`);
-    const usage = used !== null && total ? used / total * 100 : busy;
+    const engineStat = busy === null ? getGpuEngineStat(device) : null;
+    let engineUsage = null;
+
+    if (engineStat && previousStat) {
+        const busyDelta = engineStat.busy - previousStat.busy;
+        const timeDelta = engineStat.time - previousStat.time;
+
+        if (busyDelta >= 0 && timeDelta > 0)
+            engineUsage = busyDelta / timeDelta * 100;
+    }
+
+    const usage = used !== null && total ? used / total * 100 : (busy ?? engineUsage);
 
     return {
         type: 'load',
         name: type === 'igpu' ? 'iGPU' : 'dGPU',
         percent: getRoundedPercent(usage),
         color: LOAD_COLORS[type],
+        engineStat,
         tooltip: [
             `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
             total ? `${formatBytes(used)}/${formatBytes(total)}` : getGpuDisplayName(device),
@@ -506,6 +555,9 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._side = side;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
+        this._previousGpuStats = new Map();
+        this._loadItems = [];
+        this._tempItems = [];
         this._box = new St.BoxLayout({
             style_class: 'user-topmenu-metrics-box',
             y_align: Clutter.ActorAlign.CENTER,
@@ -520,35 +572,64 @@ class SystemMetricsButton extends PanelMenu.Button {
         Main.uiGroup.add_child(this._tooltip);
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
-            if (LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||
-                key === 'loads-position' || key === 'temps-position' ||
-                key === 'temperature-unit' || key === 'temperature-decimals')
-                this._refresh();
+            if (LOAD_KEYS.includes(key))
+                this._refreshLoads();
 
-            if (key === 'metrics-refresh-seconds')
-                this._startRefreshTimer();
+            if (TEMP_KEYS.includes(key) || key === 'temperature-unit' || key === 'temperature-decimals')
+                this._refreshTemps();
+
+            if (key === 'loads-position')
+                this._refreshLoads();
+
+            if (key === 'temps-position')
+                this._refreshTemps();
+
+            if (key === 'loads-refresh-seconds')
+                this._startLoadRefreshTimer();
+
+            if (key === 'temps-refresh-seconds')
+                this._startTempRefreshTimer();
         });
-        this._startRefreshTimer();
+        this._startLoadRefreshTimer();
+        this._startTempRefreshTimer();
 
-        this._refresh();
+        this._refreshLoads();
+        this._refreshTemps();
     }
 
-    _startRefreshTimer() {
-        if (this._timeoutId)
-            GLib.Source.remove(this._timeoutId);
+    _startLoadRefreshTimer() {
+        if (this._loadTimeoutId)
+            GLib.Source.remove(this._loadTimeoutId);
 
-        const seconds = this._settings.get_uint('metrics-refresh-seconds');
-        this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-            this._refresh();
+        const seconds = this._settings.get_uint('loads-refresh-seconds');
+        this._loadTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
+            this._refreshLoads();
             return GLib.SOURCE_CONTINUE;
         });
-        GLib.Source.set_name_by_id(this._timeoutId, `[${this.constructor.name}] refresh`);
+        GLib.Source.set_name_by_id(this._loadTimeoutId, `[${this.constructor.name}] loads refresh`);
+    }
+
+    _startTempRefreshTimer() {
+        if (this._tempTimeoutId)
+            GLib.Source.remove(this._tempTimeoutId);
+
+        const seconds = this._settings.get_uint('temps-refresh-seconds');
+        this._tempTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
+            this._refreshTemps();
+            return GLib.SOURCE_CONTINUE;
+        });
+        GLib.Source.set_name_by_id(this._tempTimeoutId, `[${this.constructor.name}] temps refresh`);
     }
 
     destroy() {
-        if (this._timeoutId) {
-            GLib.Source.remove(this._timeoutId);
-            this._timeoutId = null;
+        if (this._loadTimeoutId) {
+            GLib.Source.remove(this._loadTimeoutId);
+            this._loadTimeoutId = null;
+        }
+
+        if (this._tempTimeoutId) {
+            GLib.Source.remove(this._tempTimeoutId);
+            this._tempTimeoutId = null;
         }
 
         if (this._settingsChangedId) {
@@ -562,15 +643,29 @@ class SystemMetricsButton extends PanelMenu.Button {
         super.destroy();
     }
 
-    _refresh() {
+    _refreshLoads() {
+        this._loadItems = this._settings.get_string('loads-position') === this._side
+            ? this._getLoadItems()
+            : [];
+        this._render();
+    }
+
+    _refreshTemps() {
+        this._tempItems = this._settings.get_string('temps-position') === this._side
+            ? this._getTempItems()
+            : [];
+        this._render();
+    }
+
+    _render() {
         this._box.destroy_all_children();
 
         const firstGroup = this._side === 'left'
-            ? this._getItemsForGroup('loads')
-            : this._getItemsForGroup('temps');
+            ? this._getCachedItemsForGroup('loads')
+            : this._getCachedItemsForGroup('temps');
         const secondGroup = this._side === 'left'
-            ? this._getItemsForGroup('temps')
-            : this._getItemsForGroup('loads');
+            ? this._getCachedItemsForGroup('temps')
+            : this._getCachedItemsForGroup('loads');
 
         for (const item of firstGroup)
             this._box.add_child(this._createMetricLabel(item));
@@ -584,11 +679,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         this.visible = firstGroup.length + secondGroup.length > 0;
     }
 
-    _getItemsForGroup(group) {
-        if (this._settings.get_string(`${group}-position`) !== this._side)
-            return [];
-
-        return group === 'loads' ? this._getLoadItems() : this._getTempItems();
+    _getCachedItemsForGroup(group) {
+        return group === 'loads' ? this._loadItems : this._tempItems;
     }
 
     _getLoadItems() {
@@ -603,23 +695,31 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (this._settings.get_boolean('show-load-swap'))
             items.push(this._getSwapItem());
 
-        if (this._settings.get_boolean('show-load-igpu'))
-            items.push(getGpuMetrics('igpu') ?? {
+        if (this._settings.get_boolean('show-load-igpu')) {
+            const item = getGpuMetrics('igpu', this._previousGpuStats.get('igpu'));
+            if (item?.engineStat)
+                this._previousGpuStats.set('igpu', item.engineStat);
+            items.push(item ?? {
                 type: 'load',
                 name: 'iGPU',
                 percent: null,
                 color: LOAD_COLORS.igpu,
                 tooltip: 'iGPU unavailable',
             });
+        }
 
-        if (this._settings.get_boolean('show-load-dgpu'))
-            items.push(getGpuMetrics('dgpu') ?? {
+        if (this._settings.get_boolean('show-load-dgpu')) {
+            const item = getGpuMetrics('dgpu', this._previousGpuStats.get('dgpu'));
+            if (item?.engineStat)
+                this._previousGpuStats.set('dgpu', item.engineStat);
+            items.push(item ?? {
                 type: 'load',
                 name: 'dGPU',
                 percent: null,
                 color: LOAD_COLORS.dgpu,
                 tooltip: 'dGPU unavailable',
             });
+        }
 
         return items;
     }

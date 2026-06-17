@@ -165,7 +165,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('loads-position', row.selected === 1 ? 'right' : 'left');
         });
         loadsGroup.add(loadsPositionRow);
-        this._addPollingIntervalRow(loadsGroup, settings);
+        this._addPollingIntervalRow(loadsGroup, settings, 'loads-refresh-seconds', 'Usage polling interval', 'Seconds between CPU, memory, swap, and GPU usage updates.', 30);
         this._addBoundSwitch(loadsGroup, settings, 'show-load-cpu', 'CPU usage', 'Shows CPU load as a percentage column.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-mem', 'Memory usage', 'Shows memory utilization with used and total memory in the tooltip.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
@@ -191,7 +191,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('temps-position', row.selected === 1 ? 'right' : 'left');
         });
         tempsGroup.add(tempsPositionRow);
-        this._addPollingIntervalRow(tempsGroup, settings);
+        this._addPollingIntervalRow(tempsGroup, settings, 'temps-refresh-seconds', 'Temperature polling interval', 'Seconds between CPU and GPU temperature updates.', 60);
         const temperatureUnitRow = new Adw.ComboRow({
             title: 'Temperature unit',
             subtitle: 'Choose Celsius or Fahrenheit for panel values and tooltips.',
@@ -313,7 +313,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, configurable load and temperature monitoring, manual and automatic keep-awake modes, separate top-bar autohide rules, an optional quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU monitors, separate usage and temperature polling intervals, manual and automatic keep-awake modes, smart top-bar autohide, a quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
@@ -382,17 +382,17 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         group.add(row);
     }
 
-    _addPollingIntervalRow(group, settings) {
+    _addPollingIntervalRow(group, settings, key, title, subtitle, upper) {
         const row = new Adw.ActionRow({
-            title: 'Polling interval',
-            subtitle: 'Seconds between load and temperature updates.',
+            title,
+            subtitle,
         });
         const adjustment = new Gtk.Adjustment({
             lower: 1,
-            upper: 30,
+            upper,
             step_increment: 1,
             page_increment: 5,
-            value: settings.get_uint('metrics-refresh-seconds'),
+            value: settings.get_uint(key),
         });
         const spin = new Gtk.SpinButton({
             adjustment,
@@ -400,10 +400,10 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             valign: Gtk.Align.CENTER,
         });
         spin.connect('value-changed', widget => {
-            settings.set_uint('metrics-refresh-seconds', widget.get_value_as_int());
+            settings.set_uint(key, widget.get_value_as_int());
         });
-        settings.connect('changed::metrics-refresh-seconds', () => {
-            const value = settings.get_uint('metrics-refresh-seconds');
+        settings.connect(`changed::${key}`, () => {
+            const value = settings.get_uint(key);
             if (spin.get_value_as_int() !== value)
                 spin.set_value(value);
         });
