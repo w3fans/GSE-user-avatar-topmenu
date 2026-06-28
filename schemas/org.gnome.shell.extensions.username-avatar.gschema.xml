@@ -157,6 +157,11 @@
       <summary>Show discrete GPU load</summary>
       <description>When enabled, show discrete GPU usage when the driver exposes it.</description>
     </key>
+    <key name="use-load-colors" type="b">
+      <default>true</default>
+      <summary>Use colored usage metrics</summary>
+      <description>When enabled, usage icons and columns use per-metric colors. When disabled, they use the default white panel color.</description>
+    </key>
     <key name="temps-position" type="s">
       <default>'left'</default>
       <summary>Temperature display position</summary>
@@ -192,6 +197,11 @@
       <default>false</default>
       <summary>Show discrete GPU temperature</summary>
       <description>When enabled, show discrete GPU temperature in Celsius when available.</description>
+    </key>
+    <key name="use-temp-colors" type="b">
+      <default>true</default>
+      <summary>Use colored temperature metrics</summary>
+      <description>When enabled, temperature icons and values use green, yellow, orange, and red threshold colors. When disabled, they use the default white panel color.</description>
     </key>
   </schema>
 </schemalist>

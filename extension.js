@@ -33,6 +33,7 @@ const LOAD_COLORS = {
     igpu: '#c061cb',
     dgpu: '#ff7800',
 };
+const DEFAULT_METRIC_COLOR = '#ffffff';
 const METRIC_ICON_PATHS = {
     cpu: 'M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1.5 8.5h1.4l1-3 1.4 4 1.2-3h2V7h-3L8.4 9.7 6.9 5.5l-1.2 3.5H4.5v1.5zM4 0h1v1H4V0zm3 0h1v1H7V0zm3 0h1v1h-1V0zM4 15h1v1H4v-1zm3 0h1v1H7v-1zm3 0h1v1h-1v-1zM0 4h1v1H0V4zm0 3h1v1H0V7zm0 3h1v1H0v-1zm15-6h1v1h-1V4zm0 3h1v1h-1V7zm0 3h1v1h-1v-1z',
     memory: 'M1 3h14v9H1V3zm2 2v4h2V5H3zm4 0v4h2V5H7zm4 0v4h2V5h-2zM2 13h2v2H2v-2zm3 0h2v2H5v-2zm4 0h2v2H9v-2zm3 0h2v2h-2v-2z',
@@ -565,17 +566,20 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._box.spacing = 12;
         this.add_child(this._box);
         this.menu.actor.visible = false;
-        this._tooltip = new St.Label({
+        this._tooltip = new St.BoxLayout({
             style_class: 'user-topmenu-metric-tooltip',
+            vertical: true,
             visible: false,
         });
+        this._tooltip.spacing = 6;
         Main.uiGroup.add_child(this._tooltip);
 
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
-            if (LOAD_KEYS.includes(key))
+            if (LOAD_KEYS.includes(key) || key === 'use-load-colors')
                 this._refreshLoads();
 
-            if (TEMP_KEYS.includes(key) || key === 'temperature-unit' || key === 'temperature-decimals')
+            if (TEMP_KEYS.includes(key) || key === 'temperature-unit' ||
+                key === 'temperature-decimals' || key === 'use-temp-colors')
                 this._refreshTemps();
 
             if (key === 'loads-position')
@@ -786,7 +790,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             name: 'CPU',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.cpu,
-            tooltip: `CPU ${formatPercent(percent)}\n${this._cpuModel}`,
+            tooltip: [`CPU ${formatPercent(percent)}`, this._cpuModel],
         };
     }
 
@@ -802,7 +806,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             name: 'MEM',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.mem,
-            tooltip: `MEM ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}\n${getMemoryHardwareInfo()}`,
+            tooltip: [`MEM ${formatPercent(percent)}`, `${formatGiB(used)}/${formatGiB(total)}`, getMemoryHardwareInfo()],
         };
     }
 
@@ -818,7 +822,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             name: 'SWAP',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.swap,
-            tooltip: `SWAP ${formatPercent(percent)}\n${formatGiB(used)}/${formatGiB(total)}`,
+            tooltip: [`SWAP ${formatPercent(percent)}`, `${formatGiB(used)}/${formatGiB(total)}`],
         };
     }
 
@@ -828,7 +832,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             : this._createLoadMetric(item);
 
         actor.connect('enter-event', () => {
-            this._showTooltip(actor, item.tooltip);
+            this._showTooltip(actor, item);
         });
         actor.connect('leave-event', () => {
             this._hideTooltip();
@@ -850,7 +854,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         });
         iconBox.spacing = 2;
         const icon = new St.Icon({
-            gicon: createMetricIcon(this._getLoadIconName(item.name), item.color),
+            gicon: createMetricIcon(this._getLoadIconName(item.name), this._getMetricColor(item)),
             icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -860,7 +864,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (qualifier) {
             iconBox.add_child(new St.Label({
                 text: qualifier,
-                style: `color: ${item.color}; font-size: 8px; font-weight: bold;`,
+                style: `color: ${this._getMetricColor(item)}; font-size: 8px; font-weight: bold;`,
                 y_align: Clutter.ActorAlign.CENTER,
             }));
         }
@@ -878,7 +882,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         const spacer = new St.Widget();
         spacer.set_size(9, 18 - fillHeight);
         const fill = new St.Widget({
-            style: `background-color: ${item.color}; border-radius: 2px;`,
+            style: `background-color: ${this._getMetricColor(item)}; border-radius: 2px;`,
         });
         fill.set_size(9, fillHeight);
         column.add_child(spacer);
@@ -927,14 +931,14 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.spacing = 5;
 
         const icon = new St.Icon({
-            gicon: createMetricIcon(item.name === 'CPU' ? 'cpuTemp' : 'gpuTemp', item.color),
+            gicon: createMetricIcon(item.name === 'CPU' ? 'cpuTemp' : 'gpuTemp', this._getMetricColor(item)),
             icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
         const label = new St.Label({
             text: this._formatTemperature(item.temp),
             style_class: 'user-topmenu-temp-label',
-            style: `color: ${item.color};`,
+            style: `color: ${this._getMetricColor(item)};`,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -952,11 +956,57 @@ class SystemMetricsButton extends PanelMenu.Button {
         );
     }
 
-    _showTooltip(actor, text) {
+    _getMetricColor(item) {
+        if (item.type === 'load' && !this._settings.get_boolean('use-load-colors'))
+            return DEFAULT_METRIC_COLOR;
+
+        if (item.type === 'temp' && !this._settings.get_boolean('use-temp-colors'))
+            return DEFAULT_METRIC_COLOR;
+
+        return item.color;
+    }
+
+    _showTooltip(actor, item) {
         if (!this._tooltip)
             return;
 
-        this._tooltip.set_text(text);
+        this._tooltip.destroy_all_children();
+        this._tooltip.add_child(new St.Label({
+            text: Array.isArray(item.tooltip) ? item.tooltip[0] : String(item.tooltip).split('\n')[0],
+            style_class: 'user-topmenu-metric-tooltip-title',
+        }));
+
+        if (item.type === 'load') {
+            const barWidth = 120;
+            const bar = new St.BoxLayout({
+                style_class: 'user-topmenu-tooltip-bar',
+            });
+            bar.set_width(barWidth);
+            const fill = new St.Widget({
+                style: `background-color: ${this._getMetricColor(item)}; border-radius: 3px;`,
+            });
+            const empty = new St.Widget({
+                style_class: 'user-topmenu-tooltip-bar-empty',
+            });
+            const percent = item.percent === null ? 0 : Math.max(0, Math.min(100, item.percent));
+            fill.set_size(Math.max(1, Math.round(percent / 100 * barWidth)), 6);
+            empty.set_size(Math.max(1, barWidth - Math.round(percent / 100 * barWidth)), 6);
+            bar.add_child(fill);
+            bar.add_child(empty);
+            this._tooltip.add_child(bar);
+        }
+
+        const lines = Array.isArray(item.tooltip)
+            ? item.tooltip.slice(1)
+            : String(item.tooltip).split('\n').slice(1);
+
+        for (const line of lines.filter(Boolean)) {
+            this._tooltip.add_child(new St.Label({
+                text: line,
+                style_class: 'user-topmenu-metric-tooltip-detail',
+            }));
+        }
+
         this._tooltip.visible = true;
 
         const [actorX, actorY] = actor.get_transformed_position();

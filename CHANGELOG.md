@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.7
+
+- Replaced plain metric hover text with tooltips that can show horizontal usage bars
+- Added usage progress bars to CPU, RAM, swap, iGPU and dGPU tooltips
+- Added separate options to show usage and temperature metrics in colored mode or default white mode
+- Expanded the extension description to mention usage icons, temperature icons, and detailed metric tooltips
+
 ## 0.6.6
 
 - Reworked the CPU monitor icon so it no longer resembles a settings gear

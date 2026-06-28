@@ -34,3 +34,21 @@
     color: white;
     padding: 8px 10px;
 }
+
+.user-topmenu-metric-tooltip-title {
+    font-weight: bold;
+}
+
+.user-topmenu-metric-tooltip-detail {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.user-topmenu-tooltip-bar {
+    background-color: rgba(255, 255, 255, 0.16);
+    border-radius: 3px;
+}
+
+.user-topmenu-tooltip-bar-empty {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+}

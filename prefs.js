@@ -171,6 +171,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-igpu', 'Integrated GPU usage', 'Shows iGPU usage and memory details when exposed by the driver.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-dgpu', 'Discrete GPU usage', 'Shows dGPU usage and memory details when exposed by the driver.');
+        this._addBoundSwitch(loadsGroup, settings, 'use-load-colors', 'Use colored usage icons', 'Disable this to show usage icons and bars in the default white panel color.');
         loadsPage.add(loadsGroup);
 
         const tempsPage = new Adw.PreferencesPage({
@@ -206,6 +207,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-cpu', 'CPU temperature', 'Shows the CPU package temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', 'Integrated GPU temperature', 'Shows iGPU temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', 'Discrete GPU temperature', 'Shows dGPU temperature when available.');
+        this._addBoundSwitch(tempsGroup, settings, 'use-temp-colors', 'Use colored temperature icons', 'Disable this to show temperature icons and values in the default white panel color.');
         tempsPage.add(tempsGroup);
 
         const awakePage = new Adw.PreferencesPage({
@@ -313,7 +315,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU monitors, separate usage and temperature polling intervals, manual and automatic keep-awake modes, smart top-bar autohide, a quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
+            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU usage icons, CPU/GPU temperature indicators, hover tooltips with usage bars and hardware details, separate polling intervals, manual and automatic keep-awake modes, smart top-bar autohide, a quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
