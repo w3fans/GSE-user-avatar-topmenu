@@ -42,7 +42,12 @@ for tag in "$@"; do
       --out-dir . \
       --extra-source prefs.js \
       --extra-source VERSION \
-      --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml \
+      --extra-source metric-cpu-symbolic.svg \
+      --extra-source metric-memory-symbolic.svg \
+      --extra-source metric-swap-symbolic.svg \
+      --extra-source metric-gpu-symbolic.svg \
+      --extra-source metric-cpuTemp-symbolic.svg \
+      --extra-source metric-gpuTemp-symbolic.svg \
       .
 
     uuid="$(python3 - <<'PY'

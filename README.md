@@ -36,7 +36,12 @@ cd GSE-user-avatar-topmenu
 gnome-extensions pack --force --out-dir . \
   --extra-source prefs.js \
   --extra-source VERSION \
-  --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+  --extra-source metric-cpu-symbolic.svg \
+  --extra-source metric-memory-symbolic.svg \
+  --extra-source metric-swap-symbolic.svg \
+  --extra-source metric-gpu-symbolic.svg \
+  --extra-source metric-cpuTemp-symbolic.svg \
+  --extra-source metric-gpuTemp-symbolic.svg .
 gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
 gnome-extensions enable user-avatar-topmenu@basing.si
 ```
@@ -54,7 +59,12 @@ git pull
 gnome-extensions pack --force --out-dir . \
   --extra-source prefs.js \
   --extra-source VERSION \
-  --schema schemas/org.gnome.shell.extensions.username-avatar.gschema.xml .
+  --extra-source metric-cpu-symbolic.svg \
+  --extra-source metric-memory-symbolic.svg \
+  --extra-source metric-swap-symbolic.svg \
+  --extra-source metric-gpu-symbolic.svg \
+  --extra-source metric-cpuTemp-symbolic.svg \
+  --extra-source metric-gpuTemp-symbolic.svg .
 gnome-extensions install --force ./user-avatar-topmenu@basing.si.shell-extension.zip
 gnome-extensions disable user-avatar-topmenu@basing.si
 gnome-extensions enable user-avatar-topmenu@basing.si

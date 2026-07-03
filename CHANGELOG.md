@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.8
+
+- Addressed GNOME review feedback for the rejected upload
+- Moved metric artwork back to packaged SVG icon files instead of embedded SVG path strings
+- Removed elevated command usage from RAM hardware detection
+- Switched file content reads to cached async `Gio.File.load_contents_async()`
+- Used `connectObject()` for the main Shell and metric actor signal cleanup paths
+- Ensured keep-awake refresh timeout removes any existing source before creating a new one
+- Updated release packaging so GNOME 45+ uploads do not include compiled schema artifacts
+
 ## 0.6.7
 
 - Replaced plain metric hover text with tooltips that can show horizontal usage bars

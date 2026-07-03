@@ -34,31 +34,38 @@ const LOAD_COLORS = {
     dgpu: '#ff7800',
 };
 const DEFAULT_METRIC_COLOR = '#ffffff';
-const METRIC_ICON_PATHS = {
-    cpu: 'M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1.5 8.5h1.4l1-3 1.4 4 1.2-3h2V7h-3L8.4 9.7 6.9 5.5l-1.2 3.5H4.5v1.5zM4 0h1v1H4V0zm3 0h1v1H7V0zm3 0h1v1h-1V0zM4 15h1v1H4v-1zm3 0h1v1H7v-1zm3 0h1v1h-1v-1zM0 4h1v1H0V4zm0 3h1v1H0V7zm0 3h1v1H0v-1zm15-6h1v1h-1V4zm0 3h1v1h-1V7zm0 3h1v1h-1v-1z',
-    memory: 'M1 3h14v9H1V3zm2 2v4h2V5H3zm4 0v4h2V5H7zm4 0v4h2V5h-2zM2 13h2v2H2v-2zm3 0h2v2H5v-2zm4 0h2v2H9v-2zm3 0h2v2h-2v-2z',
-    swap: 'M2 1h9l3 3v11H2V1zm8 1v3h3l-3-3zM4 7v2h6L8 7h2l3 3-3 3H8l2-2H4V9H3l2-2h2L5 9H4V7z',
-    gpu: 'M1 3h13v10H4v2H2v-2H1V3zm2 2v6h9V5H3zm4.5 1A2.5 2.5 0 1 1 5 8.5 2.5 2.5 0 0 1 7.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
-    cpuTemp: 'M3 2h8a1 1 0 0 1 1 1v3h-1V4H4v7h3v1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm1-2h1v1H4V0zm3 0h1v1H7V0zM0 4h1v1H0V4zm0 3h1v1H0V7zm12 1a2 2 0 0 1 2 2v1.2a3 3 0 1 1-4 0V10a2 2 0 0 1 2-2zm0 2v2.3a1.5 1.5 0 1 0 1 0V10a1 1 0 0 0-2 0h1z',
-    gpuTemp: 'M1 3h9v2H3v6h5v2H1V3zm5.5 3A2.5 2.5 0 1 1 4 8.5 2.5 2.5 0 0 1 6.5 6zm0 1.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 5a2 2 0 0 1 2 2v3.2a3 3 0 1 1-4 0V7a2 2 0 0 1 2-2zm0 2v4.3a1.5 1.5 0 1 0 1 0V7h-1z',
-};
 const NVIDIA_METRICS_CACHE_MS = 5000;
 const NVIDIA_FAILURE_CACHE_MS = 60000;
 let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
 let memoryHardwareCache = null;
 const gpuNameCache = new Map();
+const textFileCache = new Map();
 
 function readTextFile(path) {
-    try {
-        const [ok, contents] = Gio.File.new_for_path(path).load_contents(null);
+    const now = GLib.get_monotonic_time();
+    const cached = textFileCache.get(path);
 
-        if (ok)
-            return new TextDecoder().decode(contents).trim();
-    } catch (_error) {
-        return null;
+    if (!cached || now - cached.timestamp > 1000000) {
+        const state = cached ?? {value: null, pending: false, timestamp: 0};
+        textFileCache.set(path, state);
+
+        if (!state.pending) {
+            state.pending = true;
+            Gio.File.new_for_path(path).load_contents_async(null, (file, result) => {
+                try {
+                    const [ok, contents] = file.load_contents_finish(result);
+                    state.value = ok ? new TextDecoder().decode(contents).trim() : null;
+                } catch (_error) {
+                    state.value = null;
+                } finally {
+                    state.timestamp = GLib.get_monotonic_time();
+                    state.pending = false;
+                }
+            });
+        }
     }
 
-    return null;
+    return textFileCache.get(path)?.value ?? null;
 }
 
 function readNumberFile(path) {
@@ -118,14 +125,6 @@ function formatTemperature(temp, unit, decimals) {
 
     const value = unit === 'fahrenheit' ? temp * 9 / 5 + 32 : temp;
     return `${value.toFixed(decimals ? 1 : 0)}°${unit === 'fahrenheit' ? 'F' : 'C'}`;
-}
-
-function createMetricIcon(pathName, color) {
-    const path = METRIC_ICON_PATHS[pathName] ?? METRIC_ICON_PATHS.cpu;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="${color}" d="${path}"/></svg>`;
-    return new Gio.BytesIcon({
-        bytes: new GLib.Bytes(new TextEncoder().encode(svg)),
-    });
 }
 
 function isMediaPlaying() {
@@ -218,8 +217,7 @@ function getMemoryHardwareInfo() {
     }
 
     if (modules.length === 0) {
-        const dmi = runCommand(['dmidecode', '--type', '17']) ||
-            runCommand(['sudo', '-n', 'dmidecode', '-t', '17']);
+        const dmi = runCommand(['dmidecode', '--type', '17']);
 
         for (const block of dmi.split(/\n\s*\n/)) {
             const size = block.match(/^\s*Size:\s*(?!No Module Installed)(.+)$/m)?.[1];
@@ -549,11 +547,12 @@ function getCpuTemperature() {
 
 const SystemMetricsButton = GObject.registerClass(
 class SystemMetricsButton extends PanelMenu.Button {
-    _init(settings, side) {
+    _init(settings, side, extensionPath) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
         this._settings = settings;
         this._side = side;
+        this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._previousGpuStats = new Map();
@@ -574,7 +573,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._tooltip.spacing = 6;
         Main.uiGroup.add_child(this._tooltip);
 
-        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+        this._settings.connectObject('changed', (_settings, key) => {
             if (LOAD_KEYS.includes(key) || key === 'use-load-colors')
                 this._refreshLoads();
 
@@ -593,7 +592,7 @@ class SystemMetricsButton extends PanelMenu.Button {
 
             if (key === 'temps-refresh-seconds')
                 this._startTempRefreshTimer();
-        });
+        }, this);
         this._startLoadRefreshTimer();
         this._startTempRefreshTimer();
 
@@ -636,10 +635,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             this._tempTimeoutId = null;
         }
 
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
+        this._settings.disconnectObject(this);
 
         this._tooltip?.destroy();
         this._tooltip = null;
@@ -831,12 +827,15 @@ class SystemMetricsButton extends PanelMenu.Button {
             ? this._createTempMetric(item)
             : this._createLoadMetric(item);
 
-        actor.connect('enter-event', () => {
-            this._showTooltip(actor, item);
-        });
-        actor.connect('leave-event', () => {
-            this._hideTooltip();
-        });
+        actor.connectObject(
+            'enter-event', () => {
+                this._showTooltip(actor, item);
+            },
+            'leave-event', () => {
+                this._hideTooltip();
+            },
+            this
+        );
         return actor;
     }
 
@@ -854,7 +853,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         });
         iconBox.spacing = 2;
         const icon = new St.Icon({
-            gicon: createMetricIcon(this._getLoadIconName(item.name), this._getMetricColor(item)),
+            gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
+            style: `color: ${this._getMetricColor(item)};`,
             icon_size: 14,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -931,7 +931,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         box.spacing = 5;
 
         const icon = new St.Icon({
-            gicon: createMetricIcon(item.name === 'CPU' ? 'cpuTemp' : 'gpuTemp', this._getMetricColor(item)),
+            gicon: this._getMetricIcon(item.name === 'CPU' ? 'cpuTemp' : 'gpuTemp'),
+            style: `color: ${this._getMetricColor(item)};`,
             icon_size: 13,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -964,6 +965,12 @@ class SystemMetricsButton extends PanelMenu.Button {
             return DEFAULT_METRIC_COLOR;
 
         return item.color;
+    }
+
+    _getMetricIcon(name) {
+        return new Gio.FileIcon({
+            file: Gio.File.new_for_path(`${this._extensionPath}/metric-${name}-symbolic.svg`),
+        });
     }
 
     _showTooltip(actor, item) {
@@ -1598,7 +1605,7 @@ class UserTopMenuButton extends PanelMenu.Button {
             Util.spawn(['loginctl', 'lock-session']);
         });
 
-        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+        this._settings.connectObject('changed', (_settings, key) => {
             if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar')
                 this._refreshLabel();
 
@@ -1617,7 +1624,7 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncAutohideState();
-        });
+        }, this);
 
         this._refreshLabel();
         this._syncKeepAwakeState();
@@ -1791,10 +1798,7 @@ class UserTopMenuButton extends PanelMenu.Button {
     }
 
     destroy() {
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
+        this._settings.disconnectObject(this);
 
         if (this._desktopInterfaceChangedId) {
             this._desktopInterfaceSettings.disconnect(this._desktopInterfaceChangedId);
@@ -1881,9 +1885,10 @@ export default class UsernameAvatarExtension extends Extension {
             return;
 
         this._settings = this.getSettings();
+        this._signalObject = new GObject.Object();
         this._mediaPlaying = false;
         this._resetKeepAwakeTimer();
-        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+        this._settings.connectObject('changed', (_settings, key) => {
             if (key === 'keep-awake' || key === 'keep-awake-fullscreen' ||
                 key === 'keep-awake-media')
                 this._syncInhibitor();
@@ -1916,25 +1921,17 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncFullscreenPanelVisibility();
-        });
-        this._fullscreenChangedId = global.display.connect('in-fullscreen-changed', () => {
+        }, this._signalObject);
+        global.display.connectObject('in-fullscreen-changed', () => {
             this._syncFullscreenPanelVisibility();
             this._syncInhibitor();
-        });
-        this._focusWindowChangedId = global.display.connect('notify::focus-window', () => {
+        }, this._signalObject);
+        global.display.connectObject('notify::focus-window', () => {
             this._trackFocusWindow();
             this._syncFullscreenPanelVisibility();
             this._syncInhibitor();
-        });
-        this._keepAwakeTimeoutId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT,
-            KEEP_AWAKE_REFRESH_SECONDS,
-            () => {
-                this._refreshAutomaticKeepAwake();
-                return GLib.SOURCE_CONTINUE;
-            }
-        );
-        GLib.Source.set_name_by_id(this._keepAwakeTimeoutId, `[${this.constructor.name}] keep-awake refresh`);
+        }, this._signalObject);
+        this._startKeepAwakeRefreshTimer();
 
         this._trackFocusWindow();
         this._rebuildButton();
@@ -1946,27 +1943,17 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     disable() {
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
-        }
-
-        if (this._fullscreenChangedId) {
-            global.display.disconnect(this._fullscreenChangedId);
-            this._fullscreenChangedId = null;
-        }
-
-        if (this._focusWindowChangedId) {
-            global.display.disconnect(this._focusWindowChangedId);
-            this._focusWindowChangedId = null;
+        if (this._signalObject) {
+            this._disconnectFocusWindowSignals();
+            this._settings?.disconnectObject(this._signalObject);
+            global.display.disconnectObject(this._signalObject);
+            this._signalObject = null;
         }
 
         if (this._keepAwakeTimeoutId) {
             GLib.Source.remove(this._keepAwakeTimeoutId);
             this._keepAwakeTimeoutId = null;
         }
-
-        this._disconnectFocusWindowSignals();
 
         this._releaseInhibitor();
         this._setPanelAutohide(false);
@@ -1975,6 +1962,23 @@ export default class UsernameAvatarExtension extends Extension {
         this._button?.destroy();
         this._button = null;
         this._settings = null;
+    }
+
+    _startKeepAwakeRefreshTimer() {
+        if (this._keepAwakeTimeoutId) {
+            GLib.Source.remove(this._keepAwakeTimeoutId);
+            this._keepAwakeTimeoutId = null;
+        }
+
+        this._keepAwakeTimeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT,
+            KEEP_AWAKE_REFRESH_SECONDS,
+            () => {
+                this._refreshAutomaticKeepAwake();
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
+        GLib.Source.set_name_by_id(this._keepAwakeTimeoutId, `[${this.constructor.name}] keep-awake refresh`);
     }
 
     _rebuildButton() {
@@ -1992,8 +1996,8 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
-        this._leftMetrics = new SystemMetricsButton(this._settings, 'left');
-        this._rightMetrics = new SystemMetricsButton(this._settings, 'right');
+        this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
+        this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
     }
@@ -2165,34 +2169,32 @@ export default class UsernameAvatarExtension extends Extension {
         if (!this._focusWindow)
             return;
 
-        this._focusWindowSignalIds = [
-            this._focusWindow.connect('notify::maximized-horizontally', () => {
+        this._focusWindow.connectObject(
+            'notify::maximized-horizontally', () => {
                 this._syncFullscreenPanelVisibility();
-            }),
-            this._focusWindow.connect('notify::maximized-vertically', () => {
+            },
+            'notify::maximized-vertically', () => {
                 this._syncFullscreenPanelVisibility();
-            }),
-            this._focusWindow.connect('notify::fullscreen', () => {
+            },
+            'notify::fullscreen', () => {
                 this._syncFullscreenPanelVisibility();
                 this._syncInhibitor();
-            }),
-            this._focusWindow.connect('position-changed', () => {
+            },
+            'position-changed', () => {
                 this._syncFullscreenPanelVisibility();
-            }),
-            this._focusWindow.connect('size-changed', () => {
+            },
+            'size-changed', () => {
                 this._syncFullscreenPanelVisibility();
-            }),
-        ];
+            },
+            this._signalObject
+        );
     }
 
     _disconnectFocusWindowSignals() {
-        if (!this._focusWindow || !this._focusWindowSignalIds)
+        if (!this._focusWindow || !this._signalObject)
             return;
 
-        for (const signalId of this._focusWindowSignalIds)
-            this._focusWindow.disconnect(signalId);
-
-        this._focusWindowSignalIds = null;
+        this._focusWindow.disconnectObject(this._signalObject);
         this._focusWindow = null;
     }
 
