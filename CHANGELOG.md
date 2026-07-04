@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.10
+
+- Switched metric SVG loading to the same `Gio.icon_new_for_string()` pattern used by established GNOME extensions
+- Added built-in symbolic fallbacks for metric icons if a packaged SVG cannot be found
+
 ## 0.6.9
 
 - Fixed packaged metric SVG icons being too dark to see on the GNOME top bar

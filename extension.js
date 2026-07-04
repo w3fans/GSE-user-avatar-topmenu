@@ -34,6 +34,14 @@ const LOAD_COLORS = {
     dgpu: '#ff7800',
 };
 const DEFAULT_METRIC_COLOR = '#ffffff';
+const METRIC_ICON_FALLBACKS = {
+    cpu: 'cpu-symbolic',
+    memory: 'drive-harddisk-symbolic',
+    swap: 'media-flash-symbolic',
+    gpu: 'video-display-symbolic',
+    cpuTemp: 'temperature-symbolic',
+    gpuTemp: 'temperature-symbolic',
+};
 const NVIDIA_METRICS_CACHE_MS = 5000;
 const NVIDIA_FAILURE_CACHE_MS = 60000;
 let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
@@ -968,9 +976,12 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _getMetricIcon(name) {
-        return new Gio.FileIcon({
-            file: Gio.File.new_for_path(`${this._extensionPath}/metric-${name}-symbolic.svg`),
-        });
+        const path = `${this._extensionPath}/metric-${name}-symbolic.svg`;
+
+        if (GLib.file_test(path, GLib.FileTest.EXISTS))
+            return Gio.icon_new_for_string(path);
+
+        return Gio.icon_new_for_string(METRIC_ICON_FALLBACKS[name] ?? 'dialog-information-symbolic');
     }
 
     _showTooltip(actor, item) {
