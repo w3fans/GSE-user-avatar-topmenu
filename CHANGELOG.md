@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.9
+
+- Fixed packaged metric SVG icons being too dark to see on the GNOME top bar
+- Kept the reviewer-friendly packaged icon files while restoring visible CPU, RAM, swap and GPU symbols
+
 ## 0.6.8
 
 - Addressed GNOME review feedback for the rejected upload
