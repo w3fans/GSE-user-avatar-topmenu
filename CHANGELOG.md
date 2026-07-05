@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.16
+
+- Switched CPU and RAM load indicators to GNOME theme icons instead of custom SVGs or text badges
+- Uses `power-profile-performance-symbolic` for CPU and `drive-removable-media-symbolic` for RAM
+
 ## 0.6.15
 
 - Replaced CPU and RAM top-bar SVG icons with compact text badges to avoid GNOME Shell SVG scaling/rendering ambiguity

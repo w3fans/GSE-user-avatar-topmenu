@@ -121,8 +121,6 @@ PY
 
 rm -f "$bundle"
 gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION \
-  --extra-source metric-cpu-chip-symbolic.svg \
-  --extra-source metric-memory-dimm-symbolic.svg \
   --extra-source metric-swap-symbolic.svg \
   --extra-source metric-gpu-symbolic.svg \
   --extra-source metric-cpuTemp-symbolic.svg \

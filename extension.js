@@ -35,8 +35,8 @@ const LOAD_COLORS = {
 };
 const DEFAULT_METRIC_COLOR = '#ffffff';
 const METRIC_ICON_FALLBACKS = {
-    cpuChip: 'cpu-symbolic',
-    memoryDimm: 'drive-harddisk-symbolic',
+    cpu: 'power-profile-performance-symbolic',
+    memory: 'drive-removable-media-symbolic',
     swap: 'media-flash-symbolic',
     gpu: 'video-display-symbolic',
     cpuTemp: 'temperature-symbolic',
@@ -886,7 +886,13 @@ class SystemMetricsButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         iconBox.spacing = 2;
-        iconBox.add_child(this._createLoadIconActor(item));
+        const icon = new St.Icon({
+            gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
+            style: `color: ${this._getMetricColor(item)};`,
+            icon_size: 15,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        iconBox.add_child(icon);
 
         const qualifier = this._getLoadIconQualifier(item.name);
         if (qualifier) {
@@ -925,9 +931,9 @@ class SystemMetricsButton extends PanelMenu.Button {
     _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
-            return 'cpu-chip';
+            return 'cpu';
         case 'MEM':
-            return 'memory-dimm';
+            return 'memory';
         case 'SWAP':
             return 'swap';
         case 'iGPU':
@@ -937,23 +943,6 @@ class SystemMetricsButton extends PanelMenu.Button {
         default:
             return 'cpu';
         }
-    }
-
-    _createLoadIconActor(item) {
-        if (item.name === 'CPU' || item.name === 'MEM') {
-            return new St.Label({
-                text: item.name === 'MEM' ? 'RAM' : 'CPU',
-                style: `color: ${this._getMetricColor(item)}; font-size: 7px; font-weight: bold;`,
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-        }
-
-        return new St.Icon({
-            gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
-            style: `color: ${this._getMetricColor(item)};`,
-            icon_size: 15,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
     }
 
     _getLoadIconQualifier(name) {
@@ -1013,6 +1002,9 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _getMetricIcon(name) {
+        if (name === 'cpu' || name === 'memory')
+            return Gio.icon_new_for_string(METRIC_ICON_FALLBACKS[name]);
+
         const path = `${this._extensionPath}/metric-${name}-symbolic.svg`;
 
         if (GLib.file_test(path, GLib.FileTest.EXISTS))
