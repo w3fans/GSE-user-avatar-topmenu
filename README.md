@@ -36,8 +36,8 @@ cd GSE-user-avatar-topmenu
 gnome-extensions pack --force --out-dir . \
   --extra-source prefs.js \
   --extra-source VERSION \
-  --extra-source metric-cpu-symbolic.svg \
-  --extra-source metric-memory-symbolic.svg \
+  --extra-source metric-cpu-chip-symbolic.svg \
+  --extra-source metric-memory-dimm-symbolic.svg \
   --extra-source metric-swap-symbolic.svg \
   --extra-source metric-gpu-symbolic.svg \
   --extra-source metric-cpuTemp-symbolic.svg \
@@ -59,8 +59,8 @@ git pull
 gnome-extensions pack --force --out-dir . \
   --extra-source prefs.js \
   --extra-source VERSION \
-  --extra-source metric-cpu-symbolic.svg \
-  --extra-source metric-memory-symbolic.svg \
+  --extra-source metric-cpu-chip-symbolic.svg \
+  --extra-source metric-memory-dimm-symbolic.svg \
   --extra-source metric-swap-symbolic.svg \
   --extra-source metric-gpu-symbolic.svg \
   --extra-source metric-cpuTemp-symbolic.svg \

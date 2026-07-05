@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.13
+
+- Renamed the CPU and RAM metric icon files so GNOME Shell does not reuse cached old icon surfaces
+- Replaced the CPU and RAM artwork with simpler chip and DIMM silhouettes for clearer top-bar rendering
+- Kept privileged RAM slot discovery out of the extension to stay within GNOME review guidelines
+
 ## 0.6.12
 
 - Made the packaged CPU and RAM metric icons clearer at small top-bar sizes

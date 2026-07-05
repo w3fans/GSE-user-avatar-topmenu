@@ -35,8 +35,8 @@ const LOAD_COLORS = {
 };
 const DEFAULT_METRIC_COLOR = '#ffffff';
 const METRIC_ICON_FALLBACKS = {
-    cpu: 'cpu-symbolic',
-    memory: 'drive-harddisk-symbolic',
+    cpuChip: 'cpu-symbolic',
+    memoryDimm: 'drive-harddisk-symbolic',
     swap: 'media-flash-symbolic',
     gpu: 'video-display-symbolic',
     cpuTemp: 'temperature-symbolic',
@@ -931,9 +931,9 @@ class SystemMetricsButton extends PanelMenu.Button {
     _getLoadIconName(name) {
         switch (name) {
         case 'CPU':
-            return 'cpu';
+            return 'cpu-chip';
         case 'MEM':
-            return 'memory';
+            return 'memory-dimm';
         case 'SWAP':
             return 'swap';
         case 'iGPU':
@@ -1007,7 +1007,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (GLib.file_test(path, GLib.FileTest.EXISTS))
             return Gio.icon_new_for_string(path);
 
-        return Gio.icon_new_for_string(METRIC_ICON_FALLBACKS[name] ?? 'dialog-information-symbolic');
+        return Gio.icon_new_for_string(METRIC_ICON_FALLBACKS[name.replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase())] ??
+            'dialog-information-symbolic');
     }
 
     _showTooltip(actor, item) {
