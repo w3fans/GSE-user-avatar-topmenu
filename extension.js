@@ -886,13 +886,7 @@ class SystemMetricsButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         iconBox.spacing = 2;
-        const icon = new St.Icon({
-            gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
-            style: `color: ${this._getMetricColor(item)};`,
-            icon_size: 15,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        iconBox.add_child(icon);
+        iconBox.add_child(this._createLoadIconActor(item));
 
         const qualifier = this._getLoadIconQualifier(item.name);
         if (qualifier) {
@@ -943,6 +937,23 @@ class SystemMetricsButton extends PanelMenu.Button {
         default:
             return 'cpu';
         }
+    }
+
+    _createLoadIconActor(item) {
+        if (item.name === 'CPU' || item.name === 'MEM') {
+            return new St.Label({
+                text: item.name === 'MEM' ? 'RAM' : 'CPU',
+                style: `color: ${this._getMetricColor(item)}; font-size: 7px; font-weight: bold;`,
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+        }
+
+        return new St.Icon({
+            gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
+            style: `color: ${this._getMetricColor(item)};`,
+            icon_size: 15,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
     }
 
     _getLoadIconQualifier(name) {

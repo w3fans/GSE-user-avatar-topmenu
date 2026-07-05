@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.15
+
+- Replaced CPU and RAM top-bar SVG icons with compact text badges to avoid GNOME Shell SVG scaling/rendering ambiguity
+- Kept SVG icons for swap and GPU metrics where the existing shapes render reliably
+
 ## 0.6.14
 
 - Changed CPU and RAM metric icons from filled blocks to thin outline artwork for clearer top-bar rendering
