@@ -8,7 +8,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
-import * as Util from 'resource:///org/gnome/shell/misc/util.js';
+import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const AVATAR_SIZE = 24;
@@ -48,6 +48,31 @@ let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
 let memoryHardwareCache = null;
 const gpuNameCache = new Map();
 const textFileCache = new Map();
+
+function addSettingsSwitch(menu, label, settings, key, owner, options = {}) {
+    const item = new PopupMenu.PopupSwitchMenuItem(
+        label,
+        options.invert ? !settings.get_boolean(key) : settings.get_boolean(key)
+    );
+
+    item.connectObject('toggled', (_item, state) => {
+        settings.set_boolean(key, options.invert ? !state : state);
+    }, owner);
+    owner._switchItems?.push(item);
+    menu.addMenuItem(item);
+    return item;
+}
+
+function addCustomSwitch(menu, label, state, owner, callback) {
+    const item = new PopupMenu.PopupSwitchMenuItem(label, state);
+
+    item.connectObject('toggled', (_item, nextState) => {
+        callback(nextState);
+    }, owner);
+    owner._switchItems?.push(item);
+    menu.addMenuItem(item);
+    return item;
+}
 
 function readTextFile(path) {
     const now = GLib.get_monotonic_time();
@@ -1058,135 +1083,65 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         this._settings = extension._settings;
         this._desktopInterfaceSettings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
         this._touchpadSettings = new Gio.Settings({schema: 'org.gnome.desktop.peripherals.touchpad'});
+        this._switchItems = [];
 
         this.menu.setHeader('avatar-default-symbolic', extension._getDisplayName(), null);
 
-        this._keepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Keep awake',
-            this._settings.get_boolean('keep-awake')
-        );
-        this._keepAwakeToggledId = this._keepAwakeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('keep-awake', state);
-        });
-        this.menu.addMenuItem(this._keepAwakeItem);
+        this._keepAwakeItem = addSettingsSwitch(this.menu, 'Keep awake', this._settings, 'keep-awake', this);
 
         this._displaySubmenu = new PopupMenu.PopupSubMenuMenuItem('Display');
         this.menu.addMenuItem(this._displaySubmenu);
 
-        this._showHostnameItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show computer name',
-            this._settings.get_boolean('show-hostname')
-        );
-        this._showHostnameToggledId = this._showHostnameItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-hostname', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showHostnameItem);
-
-        this._showUsernameItem = new PopupMenu.PopupSwitchMenuItem(
-            'Display username',
-            this._settings.get_boolean('show-username')
-        );
-        this._showUsernameToggledId = this._showUsernameItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-username', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showUsernameItem);
-
-        this._showAvatarItem = new PopupMenu.PopupSwitchMenuItem(
-            'Display avatar',
-            this._settings.get_boolean('show-avatar')
-        );
-        this._showAvatarToggledId = this._showAvatarItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-avatar', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showAvatarItem);
+        this._showHostnameItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Show computer name', this._settings, 'show-hostname', this);
+        this._showUsernameItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Display username', this._settings, 'show-username', this);
+        this._showAvatarItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Display avatar', this._settings, 'show-avatar', this);
 
         this._desktopSubmenu = new PopupMenu.PopupSubMenuMenuItem('Desktop');
         this.menu.addMenuItem(this._desktopSubmenu);
 
-        this._primaryPasteItem = new PopupMenu.PopupSwitchMenuItem(
-            'Enable primary paste',
-            this._desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste')
-        );
-        this._primaryPasteToggledId = this._primaryPasteItem.connect('toggled', (_item, state) => {
-            this._desktopInterfaceSettings.set_boolean('gtk-enable-primary-paste', state);
-        });
-        this._desktopSubmenu.menu.addMenuItem(this._primaryPasteItem);
-
-        this._touchpadMiddleClickItem = new PopupMenu.PopupSwitchMenuItem(
+        this._primaryPasteItem = addSettingsSwitch(
+            this._desktopSubmenu.menu, 'Enable primary paste',
+            this._desktopInterfaceSettings, 'gtk-enable-primary-paste', this);
+        this._touchpadMiddleClickItem = addCustomSwitch(
+            this._desktopSubmenu.menu,
             'Three-finger middle click',
-            this._touchpadSettings.get_string('tap-button-map') === 'lrm'
-        );
-        this._touchpadMiddleClickToggledId = this._touchpadMiddleClickItem.connect('toggled', (_item, state) => {
-            this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
-        });
-        this._desktopSubmenu.menu.addMenuItem(this._touchpadMiddleClickItem);
+            this._touchpadSettings.get_string('tap-button-map') === 'lrm',
+            this,
+            state => {
+                this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
+            });
 
         this._behaviorSubmenu = new PopupMenu.PopupSubMenuMenuItem('Extension');
         this.menu.addMenuItem(this._behaviorSubmenu);
 
-        this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show in quick settings',
-            this._settings.get_boolean('show-quick-settings')
-        );
-        this._showQuickSettingsToggledId = this._showQuickSettingsItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-quick-settings', state);
-        });
-        this._behaviorSubmenu.menu.addMenuItem(this._showQuickSettingsItem);
-
-        this._quickSettingsToggleModeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Clicking username disables extension',
-            !this._settings.get_boolean('quick-settings-toggle-topbar-only')
-        );
-        this._quickSettingsToggleModeToggledId = this._quickSettingsToggleModeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('quick-settings-toggle-topbar-only', !state);
-        });
-        this._behaviorSubmenu.menu.addMenuItem(this._quickSettingsToggleModeItem);
+        this._showQuickSettingsItem = addSettingsSwitch(
+            this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
+        this._quickSettingsToggleModeItem = addSettingsSwitch(
+            this._behaviorSubmenu.menu, 'Clicking username disables extension',
+            this._settings, 'quick-settings-toggle-topbar-only', this, {invert: true});
 
         this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
         this.menu.addMenuItem(this._autohideSubmenu);
 
-        this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide in fullscreen',
-            this._settings.get_boolean('hide-topbar-fullscreen')
-        );
-        this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-fullscreen', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideFullscreenItem);
+        this._hideFullscreenItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide in fullscreen', this._settings, 'hide-topbar-fullscreen', this);
+        this._hideFullscreenAllMonitorsItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Fullscreen on all monitors',
+            this._settings, 'hide-topbar-fullscreen-all-monitors', this);
+        this._hideMaximizedItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide when maximized', this._settings, 'hide-topbar-maximized', this);
+        this._hideTouchingItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide when touching top bar', this._settings, 'hide-topbar-touching', this);
 
-        this._hideFullscreenAllMonitorsItem = new PopupMenu.PopupSwitchMenuItem(
-            'Fullscreen on all monitors',
-            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors')
-        );
-        this._hideFullscreenAllMonitorsToggledId = this._hideFullscreenAllMonitorsItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-fullscreen-all-monitors', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideFullscreenAllMonitorsItem);
-
-        this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide when maximized',
-            this._settings.get_boolean('hide-topbar-maximized')
-        );
-        this._hideMaximizedToggledId = this._hideMaximizedItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-maximized', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideMaximizedItem);
-
-        this._hideTouchingItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide when touching top bar',
-            this._settings.get_boolean('hide-topbar-touching')
-        );
-        this._hideTouchingToggledId = this._hideTouchingItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-touching', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideTouchingItem);
-
-        this._desktopInterfaceChangedId = this._desktopInterfaceSettings.connect('changed::gtk-enable-primary-paste', () => {
+        this._desktopInterfaceSettings.connectObject('changed::gtk-enable-primary-paste', () => {
             this._syncDesktopState();
-        });
-        this._touchpadSettingsChangedId = this._touchpadSettings.connect('changed::tap-button-map', () => {
+        }, this);
+        this._touchpadSettings.connectObject('changed::tap-button-map', () => {
             this._syncDesktopState();
-        });
+        }, this);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Open Preferences', () => {
@@ -1195,13 +1150,13 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
             });
         });
         this.menu.addAction('Lock Screen', () => {
-            Util.spawn(['loginctl', 'lock-session']);
+            SystemActions.getDefault().activateLockScreen();
         });
         this.menu.addAction('Log Out', () => {
-            Util.spawn(['gnome-session-quit', '--logout', '--no-prompt']);
+            SystemActions.getDefault().activateLogout();
         });
 
-        this.connect('clicked', () => {
+        this.connectObject('clicked', () => {
             if (this._syncingChecked)
                 return;
 
@@ -1211,12 +1166,8 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
                 return;
             }
 
-            Util.spawn([
-                'gnome-extensions',
-                'disable',
-                this._extension.uuid,
-            ]);
-        });
+            Main.extensionManager.disableExtension(this._extension.uuid);
+        }, this);
 
         this.sync();
     }
@@ -1281,77 +1232,19 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
     }
 
     destroy() {
-        if (this._desktopInterfaceChangedId) {
-            this._desktopInterfaceSettings.disconnect(this._desktopInterfaceChangedId);
-            this._desktopInterfaceChangedId = null;
-        }
-
-        if (this._touchpadSettingsChangedId) {
-            this._touchpadSettings.disconnect(this._touchpadSettingsChangedId);
-            this._touchpadSettingsChangedId = null;
-        }
-
-        if (this._keepAwakeToggledId) {
-            this._keepAwakeItem.disconnect(this._keepAwakeToggledId);
-            this._keepAwakeToggledId = null;
-        }
-
-        if (this._showHostnameToggledId) {
-            this._showHostnameItem.disconnect(this._showHostnameToggledId);
-            this._showHostnameToggledId = null;
-        }
-
-        if (this._showUsernameToggledId) {
-            this._showUsernameItem.disconnect(this._showUsernameToggledId);
-            this._showUsernameToggledId = null;
-        }
-
-        if (this._showAvatarToggledId) {
-            this._showAvatarItem.disconnect(this._showAvatarToggledId);
-            this._showAvatarToggledId = null;
-        }
-
-        if (this._primaryPasteToggledId) {
-            this._primaryPasteItem.disconnect(this._primaryPasteToggledId);
-            this._primaryPasteToggledId = null;
-        }
-
-        if (this._touchpadMiddleClickToggledId) {
-            this._touchpadMiddleClickItem.disconnect(this._touchpadMiddleClickToggledId);
-            this._touchpadMiddleClickToggledId = null;
-        }
-
-        if (this._showQuickSettingsToggledId) {
-            this._showQuickSettingsItem.disconnect(this._showQuickSettingsToggledId);
-            this._showQuickSettingsToggledId = null;
-        }
-
-        if (this._quickSettingsToggleModeToggledId) {
-            this._quickSettingsToggleModeItem.disconnect(this._quickSettingsToggleModeToggledId);
-            this._quickSettingsToggleModeToggledId = null;
-        }
-
-        if (this._hideFullscreenToggledId) {
-            this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
-            this._hideFullscreenToggledId = null;
-        }
-
-        if (this._hideFullscreenAllMonitorsToggledId) {
-            this._hideFullscreenAllMonitorsItem.disconnect(this._hideFullscreenAllMonitorsToggledId);
-            this._hideFullscreenAllMonitorsToggledId = null;
-        }
-
-        if (this._hideMaximizedToggledId) {
-            this._hideMaximizedItem.disconnect(this._hideMaximizedToggledId);
-            this._hideMaximizedToggledId = null;
-        }
-
-        if (this._hideTouchingToggledId) {
-            this._hideTouchingItem.disconnect(this._hideTouchingToggledId);
-            this._hideTouchingToggledId = null;
-        }
+        this._desktopInterfaceSettings.disconnectObject(this);
+        this._touchpadSettings.disconnectObject(this);
+        this.disconnectObject(this);
+        this._disconnectSwitchItems();
 
         super.destroy();
+    }
+
+    _disconnectSwitchItems() {
+        for (const item of this._switchItems)
+            item.disconnectObject(this);
+
+        this._switchItems = [];
     }
 
     _syncDesktopState() {
@@ -1395,6 +1288,7 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._settings = settings;
         this._desktopInterfaceSettings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
         this._touchpadSettings = new Gio.Settings({schema: 'org.gnome.desktop.peripherals.touchpad'});
+        this._switchItems = [];
         this._userName = GLib.get_user_name();
         this._realName = GLib.get_real_name();
         this._hostname = GLib.get_host_name();
@@ -1476,144 +1370,66 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this._keepAwakeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Keep awake',
-            this._settings.get_boolean('keep-awake')
-        );
-        this._keepAwakeToggledId = this._keepAwakeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('keep-awake', state);
-        });
-        this.menu.addMenuItem(this._keepAwakeItem);
+        this._keepAwakeItem = addSettingsSwitch(this.menu, 'Keep awake', this._settings, 'keep-awake', this);
 
         this._displaySubmenu = new PopupMenu.PopupSubMenuMenuItem('Display');
         this.menu.addMenuItem(this._displaySubmenu);
 
-        this._showTopBarItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show in top bar',
-            this._settings.get_boolean('show-topbar')
-        );
-        this._showTopBarToggledId = this._showTopBarItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-topbar', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showTopBarItem);
-
-        this._showHostnameItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show computer name',
-            this._settings.get_boolean('show-hostname')
-        );
-        this._showHostnameToggledId = this._showHostnameItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-hostname', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showHostnameItem);
-
-        this._showUsernameItem = new PopupMenu.PopupSwitchMenuItem(
-            'Display username',
-            this._settings.get_boolean('show-username')
-        );
-        this._showUsernameToggledId = this._showUsernameItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-username', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showUsernameItem);
-
-        this._showAvatarItem = new PopupMenu.PopupSwitchMenuItem(
-            'Display avatar',
-            this._settings.get_boolean('show-avatar')
-        );
-        this._showAvatarToggledId = this._showAvatarItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-avatar', state);
-        });
-        this._displaySubmenu.menu.addMenuItem(this._showAvatarItem);
+        this._showTopBarItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Show in top bar', this._settings, 'show-topbar', this);
+        this._showHostnameItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Show computer name', this._settings, 'show-hostname', this);
+        this._showUsernameItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Display username', this._settings, 'show-username', this);
+        this._showAvatarItem = addSettingsSwitch(
+            this._displaySubmenu.menu, 'Display avatar', this._settings, 'show-avatar', this);
 
         this._desktopSubmenu = new PopupMenu.PopupSubMenuMenuItem('Desktop');
         this.menu.addMenuItem(this._desktopSubmenu);
 
-        this._primaryPasteItem = new PopupMenu.PopupSwitchMenuItem(
-            'Enable primary paste',
-            this._desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste')
-        );
-        this._primaryPasteToggledId = this._primaryPasteItem.connect('toggled', (_item, state) => {
-            this._desktopInterfaceSettings.set_boolean('gtk-enable-primary-paste', state);
-        });
-        this._desktopSubmenu.menu.addMenuItem(this._primaryPasteItem);
-
-        this._touchpadMiddleClickItem = new PopupMenu.PopupSwitchMenuItem(
+        this._primaryPasteItem = addSettingsSwitch(
+            this._desktopSubmenu.menu, 'Enable primary paste',
+            this._desktopInterfaceSettings, 'gtk-enable-primary-paste', this);
+        this._touchpadMiddleClickItem = addCustomSwitch(
+            this._desktopSubmenu.menu,
             'Three-finger middle click',
-            this._touchpadSettings.get_string('tap-button-map') === 'lrm'
-        );
-        this._touchpadMiddleClickToggledId = this._touchpadMiddleClickItem.connect('toggled', (_item, state) => {
-            this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
-        });
-        this._desktopSubmenu.menu.addMenuItem(this._touchpadMiddleClickItem);
+            this._touchpadSettings.get_string('tap-button-map') === 'lrm',
+            this,
+            state => {
+                this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
+            });
 
         this._behaviorSubmenu = new PopupMenu.PopupSubMenuMenuItem('Extension');
         this.menu.addMenuItem(this._behaviorSubmenu);
 
-        this._showQuickSettingsItem = new PopupMenu.PopupSwitchMenuItem(
-            'Show in quick settings',
-            this._settings.get_boolean('show-quick-settings')
-        );
-        this._showQuickSettingsToggledId = this._showQuickSettingsItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('show-quick-settings', state);
-        });
-        this._behaviorSubmenu.menu.addMenuItem(this._showQuickSettingsItem);
-
-        this._quickSettingsToggleModeItem = new PopupMenu.PopupSwitchMenuItem(
-            'Clicking username disables extension',
-            !this._settings.get_boolean('quick-settings-toggle-topbar-only')
-        );
-        this._quickSettingsToggleModeToggledId = this._quickSettingsToggleModeItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('quick-settings-toggle-topbar-only', !state);
-        });
-        this._behaviorSubmenu.menu.addMenuItem(this._quickSettingsToggleModeItem);
+        this._showQuickSettingsItem = addSettingsSwitch(
+            this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
+        this._quickSettingsToggleModeItem = addSettingsSwitch(
+            this._behaviorSubmenu.menu, 'Clicking username disables extension',
+            this._settings, 'quick-settings-toggle-topbar-only', this, {invert: true});
 
         this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
         this.menu.addMenuItem(this._autohideSubmenu);
 
-        this._hideFullscreenItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide in fullscreen',
-            this._settings.get_boolean('hide-topbar-fullscreen')
-        );
-        this._hideFullscreenToggledId = this._hideFullscreenItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-fullscreen', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideFullscreenItem);
+        this._hideFullscreenItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide in fullscreen', this._settings, 'hide-topbar-fullscreen', this);
+        this._hideFullscreenAllMonitorsItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Fullscreen on all monitors',
+            this._settings, 'hide-topbar-fullscreen-all-monitors', this);
+        this._hideMaximizedItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide when maximized', this._settings, 'hide-topbar-maximized', this);
+        this._hideTouchingItem = addSettingsSwitch(
+            this._autohideSubmenu.menu, 'Hide when touching top bar', this._settings, 'hide-topbar-touching', this);
 
-        this._hideFullscreenAllMonitorsItem = new PopupMenu.PopupSwitchMenuItem(
-            'Fullscreen on all monitors',
-            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors')
-        );
-        this._hideFullscreenAllMonitorsToggledId = this._hideFullscreenAllMonitorsItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-fullscreen-all-monitors', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideFullscreenAllMonitorsItem);
-
-        this._hideMaximizedItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide when maximized',
-            this._settings.get_boolean('hide-topbar-maximized')
-        );
-        this._hideMaximizedToggledId = this._hideMaximizedItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-maximized', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideMaximizedItem);
-
-        this._hideTouchingItem = new PopupMenu.PopupSwitchMenuItem(
-            'Hide when touching top bar',
-            this._settings.get_boolean('hide-topbar-touching')
-        );
-        this._hideTouchingToggledId = this._hideTouchingItem.connect('toggled', (_item, state) => {
-            this._settings.set_boolean('hide-topbar-touching', state);
-        });
-        this._autohideSubmenu.menu.addMenuItem(this._hideTouchingItem);
-
-        this._desktopInterfaceChangedId = this._desktopInterfaceSettings.connect('changed::gtk-enable-primary-paste', () => {
+        this._desktopInterfaceSettings.connectObject('changed::gtk-enable-primary-paste', () => {
             this._syncDesktopState();
-        });
-        this._touchpadSettingsChangedId = this._touchpadSettings.connect('changed::tap-button-map', () => {
+        }, this);
+        this._touchpadSettings.connectObject('changed::tap-button-map', () => {
             this._syncDesktopState();
-        });
+        }, this);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction('Lock Screen', () => {
-            Util.spawn(['loginctl', 'lock-session']);
+            SystemActions.getDefault().activateLockScreen();
         });
 
         this._settings.connectObject('changed', (_settings, key) => {
@@ -1811,82 +1627,18 @@ class UserTopMenuButton extends PanelMenu.Button {
     destroy() {
         this._settings.disconnectObject(this);
 
-        if (this._desktopInterfaceChangedId) {
-            this._desktopInterfaceSettings.disconnect(this._desktopInterfaceChangedId);
-            this._desktopInterfaceChangedId = null;
-        }
-
-        if (this._touchpadSettingsChangedId) {
-            this._touchpadSettings.disconnect(this._touchpadSettingsChangedId);
-            this._touchpadSettingsChangedId = null;
-        }
-
-        if (this._keepAwakeToggledId) {
-            this._keepAwakeItem.disconnect(this._keepAwakeToggledId);
-            this._keepAwakeToggledId = null;
-        }
-
-        if (this._showTopBarToggledId) {
-            this._showTopBarItem.disconnect(this._showTopBarToggledId);
-            this._showTopBarToggledId = null;
-        }
-
-        if (this._showHostnameToggledId) {
-            this._showHostnameItem.disconnect(this._showHostnameToggledId);
-            this._showHostnameToggledId = null;
-        }
-
-        if (this._showUsernameToggledId) {
-            this._showUsernameItem.disconnect(this._showUsernameToggledId);
-            this._showUsernameToggledId = null;
-        }
-
-        if (this._showAvatarToggledId) {
-            this._showAvatarItem.disconnect(this._showAvatarToggledId);
-            this._showAvatarToggledId = null;
-        }
-
-        if (this._primaryPasteToggledId) {
-            this._primaryPasteItem.disconnect(this._primaryPasteToggledId);
-            this._primaryPasteToggledId = null;
-        }
-
-        if (this._touchpadMiddleClickToggledId) {
-            this._touchpadMiddleClickItem.disconnect(this._touchpadMiddleClickToggledId);
-            this._touchpadMiddleClickToggledId = null;
-        }
-
-        if (this._showQuickSettingsToggledId) {
-            this._showQuickSettingsItem.disconnect(this._showQuickSettingsToggledId);
-            this._showQuickSettingsToggledId = null;
-        }
-
-        if (this._quickSettingsToggleModeToggledId) {
-            this._quickSettingsToggleModeItem.disconnect(this._quickSettingsToggleModeToggledId);
-            this._quickSettingsToggleModeToggledId = null;
-        }
-
-        if (this._hideFullscreenToggledId) {
-            this._hideFullscreenItem.disconnect(this._hideFullscreenToggledId);
-            this._hideFullscreenToggledId = null;
-        }
-
-        if (this._hideFullscreenAllMonitorsToggledId) {
-            this._hideFullscreenAllMonitorsItem.disconnect(this._hideFullscreenAllMonitorsToggledId);
-            this._hideFullscreenAllMonitorsToggledId = null;
-        }
-
-        if (this._hideMaximizedToggledId) {
-            this._hideMaximizedItem.disconnect(this._hideMaximizedToggledId);
-            this._hideMaximizedToggledId = null;
-        }
-
-        if (this._hideTouchingToggledId) {
-            this._hideTouchingItem.disconnect(this._hideTouchingToggledId);
-            this._hideTouchingToggledId = null;
-        }
+        this._desktopInterfaceSettings.disconnectObject(this);
+        this._touchpadSettings.disconnectObject(this);
+        this._disconnectSwitchItems();
 
         super.destroy();
+    }
+
+    _disconnectSwitchItems() {
+        for (const item of this._switchItems)
+            item.disconnectObject(this);
+
+        this._switchItems = [];
     }
 });
 
@@ -1896,7 +1648,6 @@ export default class UsernameAvatarExtension extends Extension {
             return;
 
         this._settings = this.getSettings();
-        this._signalObject = new GObject.Object();
         this._mediaPlaying = false;
         this._resetKeepAwakeTimer();
         this._settings.connectObject('changed', (_settings, key) => {
@@ -1932,16 +1683,16 @@ export default class UsernameAvatarExtension extends Extension {
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncFullscreenPanelVisibility();
-        }, this._signalObject);
+        }, this);
         global.display.connectObject('in-fullscreen-changed', () => {
             this._syncFullscreenPanelVisibility();
             this._syncInhibitor();
-        }, this._signalObject);
+        }, this);
         global.display.connectObject('notify::focus-window', () => {
             this._trackFocusWindow();
             this._syncFullscreenPanelVisibility();
             this._syncInhibitor();
-        }, this._signalObject);
+        }, this);
         this._startKeepAwakeRefreshTimer();
 
         this._trackFocusWindow();
@@ -1954,12 +1705,9 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     disable() {
-        if (this._signalObject) {
-            this._disconnectFocusWindowSignals();
-            this._settings?.disconnectObject(this._signalObject);
-            global.display.disconnectObject(this._signalObject);
-            this._signalObject = null;
-        }
+        this._disconnectFocusWindowSignals();
+        this._settings?.disconnectObject(this);
+        global.display.disconnectObject(this);
 
         if (this._keepAwakeTimeoutId) {
             GLib.Source.remove(this._keepAwakeTimeoutId);
@@ -2197,15 +1945,15 @@ export default class UsernameAvatarExtension extends Extension {
             'size-changed', () => {
                 this._syncFullscreenPanelVisibility();
             },
-            this._signalObject
+            this
         );
     }
 
     _disconnectFocusWindowSignals() {
-        if (!this._focusWindow || !this._signalObject)
+        if (!this._focusWindow)
             return;
 
-        this._focusWindow.disconnectObject(this._signalObject);
+        this._focusWindow.disconnectObject(this);
         this._focusWindow = null;
     }
 

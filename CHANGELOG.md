@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.11
+
+- Addressed GNOME review feedback for version 12
+- Changed extension-level signal ownership to `connectObject(..., this)` with matching `disconnectObject(this)`
+- Replaced external session command spawning with GNOME Shell `SystemActions`
+- Replaced the extension-disable command spawn with Shell extension-manager handling
+- Consolidated repeated menu switch setup and cleanup into shared helper functions
+
 ## 0.6.10
 
 - Switched metric SVG loading to the same `Gio.icon_new_for_string()` pattern used by established GNOME extensions

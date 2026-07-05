@@ -4,7 +4,7 @@
   "description": "Show your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU usage icons, CPU/GPU temperature indicators, hover tooltips with usage bars and hardware details, separate usage and temperature polling intervals, manual, fullscreen, media and timed keep-awake modes, smart top-bar autohide, a quick settings user toggle, and desktop shortcuts for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 63,
+  "version": 64,
   "shell-version": [
     "45",
     "46",
