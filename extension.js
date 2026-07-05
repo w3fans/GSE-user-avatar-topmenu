@@ -889,7 +889,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         const icon = new St.Icon({
             gicon: this._getMetricIcon(this._getLoadIconName(item.name)),
             style: `color: ${this._getMetricColor(item)};`,
-            icon_size: 14,
+            icon_size: 15,
             y_align: Clutter.ActorAlign.CENTER,
         });
         iconBox.add_child(icon);

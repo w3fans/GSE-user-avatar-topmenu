@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.14
+
+- Changed CPU and RAM metric icons from filled blocks to thin outline artwork for clearer top-bar rendering
+- Slightly increased load metric icon size so chip and DIMM details remain visible at panel scale
+
 ## 0.6.13
 
 - Renamed the CPU and RAM metric icon files so GNOME Shell does not reuse cached old icon surfaces

@@ -1,3 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <path fill="#eeeeec" d="M5 4h6v1H5V4zm0 7h6v1H5v-1zM4 5h1v6H4V5zm7 0h1v6h-1V5zM6 6h4v4H6V6zM2 2h1v2H2V2zm3 0h1v2H5V2zm5 0h1v2h-1V2zm3 0h1v2h-1V2zM2 12h1v2H2v-2zm3 0h1v2H5v-2zm5 0h1v2h-1v-2zm3 0h1v2h-1v-2zM2 5h2v1H2V5zm0 5h2v1H2v-1zm10-5h2v1h-2V5zm0 5h2v1h-2v-1z"/>
+  <g fill="none" stroke="#eeeeec" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4.5" y="4.5" width="7" height="7" rx="1"/>
+    <rect x="6.5" y="6.5" width="3" height="3" rx=".4"/>
+    <path d="M3 5.5H1.5M3 8H1.5M3 10.5H1.5M14.5 5.5H13M14.5 8H13M14.5 10.5H13M5.5 3V1.5M8 3V1.5M10.5 3V1.5M5.5 14.5V13M8 14.5V13M10.5 14.5V13"/>
+  </g>
 </svg>
