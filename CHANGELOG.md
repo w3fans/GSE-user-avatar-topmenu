@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.12
+
+- Made the packaged CPU and RAM metric icons clearer at small top-bar sizes
+- Refreshed CPU model tooltip text after async file reads complete instead of keeping the initial fallback
+- Avoided permanently caching unavailable RAM hardware inventory from the first early/permission-limited read
+
 ## 0.6.11
 
 - Addressed GNOME review feedback for version 12

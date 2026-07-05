@@ -269,8 +269,7 @@ function getMemoryHardwareInfo() {
     }
 
     if (modules.length === 0) {
-        memoryHardwareCache = 'RAM hardware inventory unavailable';
-        return memoryHardwareCache;
+        return 'RAM hardware inventory unavailable to this user';
     }
 
     const types = [...new Set(modules.map(module => module.type).filter(Boolean))];
@@ -323,7 +322,7 @@ function getCpuModel() {
     const contents = readTextFile('/proc/cpuinfo');
     const match = contents?.match(/^model name\s+:\s+(.+)$/m);
 
-    return match?.[1] ?? GLib.get_host_name();
+    return match?.[1] ?? 'CPU model loading...';
 }
 
 function getGpuDisplayName(device) {
@@ -718,6 +717,7 @@ class SystemMetricsButton extends PanelMenu.Button {
 
     _getLoadItems() {
         const items = [];
+        this._cpuModel = getCpuModel();
 
         if (this._settings.get_boolean('show-load-cpu'))
             items.push(this._getCpuLoadItem());
@@ -759,6 +759,7 @@ class SystemMetricsButton extends PanelMenu.Button {
 
     _getTempItems() {
         const items = [];
+        this._cpuModel = getCpuModel();
 
         if (this._settings.get_boolean('show-temp-cpu')) {
             const temp = getCpuTemperature();
