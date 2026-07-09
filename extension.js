@@ -599,8 +599,10 @@ class SystemMetricsButton extends PanelMenu.Button {
         this.menu.actor.visible = false;
         this._tooltip = new St.BoxLayout({
             style_class: 'user-topmenu-metric-tooltip',
+            style: 'background-color: #242424; border-radius: 6px; color: white; padding: 8px 10px;',
             vertical: true,
             visible: false,
+            opacity: 255,
         });
         this._tooltip.spacing = 6;
         Main.uiGroup.add_child(this._tooltip);
@@ -1056,6 +1058,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         }
 
         this._tooltip.visible = true;
+        this._tooltip.get_parent()?.set_child_above_sibling(this._tooltip, null);
 
         const [actorX, actorY] = actor.get_transformed_position();
         const [actorWidth, actorHeight] = actor.get_transformed_size();

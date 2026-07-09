@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.19
+
+- Made metric tooltips fully opaque and explicitly raised above application windows
+
 ## 0.6.18
 
 - Restored the unused legacy Quick Settings schema key to prevent old cached extension code from failing during an in-place update
