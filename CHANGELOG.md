@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.17
+
+- Removed all self-disable controls so the extension no longer interacts with GNOME's extension manager
+- Made the quick settings username tile consistently show or hide only the extension's top-bar entries
+- Made the System Loads Preferences page easier to find with a clearer title, visible performance icon, and earlier navigation position
+
 ## 0.6.16
 
 - Switched CPU and RAM load indicators to GNOME theme icons instead of custom SVGs or text badges

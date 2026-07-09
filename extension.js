@@ -1124,9 +1124,6 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         this._showQuickSettingsItem = addSettingsSwitch(
             this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
-        this._quickSettingsToggleModeItem = addSettingsSwitch(
-            this._behaviorSubmenu.menu, 'Clicking username disables extension',
-            this._settings, 'quick-settings-toggle-topbar-only', this, {invert: true});
 
         this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
         this.menu.addMenuItem(this._autohideSubmenu);
@@ -1165,13 +1162,8 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
             if (this._syncingChecked)
                 return;
 
-            if (this._settings.get_boolean('quick-settings-toggle-topbar-only')) {
-                const nextState = !this._settings.get_boolean('show-topbar');
-                this._settings.set_boolean('show-topbar', nextState);
-                return;
-            }
-
-            Main.extensionManager.disableExtension(this._extension.uuid);
+            const nextState = !this._settings.get_boolean('show-topbar');
+            this._settings.set_boolean('show-topbar', nextState);
         }, this);
 
         this.sync();
@@ -1184,7 +1176,6 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         const showAvatar = this._settings.get_boolean('show-avatar');
         const showTopBar = this._settings.get_boolean('show-topbar');
         const showQuickSettings = this._settings.get_boolean('show-quick-settings');
-        const quickSettingsToggleTopbarOnly = this._settings.get_boolean('quick-settings-toggle-topbar-only');
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
         const hideFullscreenAllMonitors = this._settings.get_boolean('hide-topbar-fullscreen-all-monitors');
         const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
@@ -1193,14 +1184,12 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         this.title = displayName;
         this._syncingChecked = true;
-        this.checked = quickSettingsToggleTopbarOnly ? showTopBar : true;
+        this.checked = showTopBar;
         this._syncingChecked = false;
         this.menu.setHeader(
             'avatar-default-symbolic',
             displayName,
-            quickSettingsToggleTopbarOnly
-                ? (showTopBar ? 'Shown in top bar' : 'Hidden from top bar')
-                : 'Click to disable the extension'
+            showTopBar ? 'Shown in top bar' : 'Hidden from top bar'
         );
 
         if (this._keepAwakeItem.state !== keepAwake)
@@ -1409,9 +1398,6 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this._showQuickSettingsItem = addSettingsSwitch(
             this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
-        this._quickSettingsToggleModeItem = addSettingsSwitch(
-            this._behaviorSubmenu.menu, 'Clicking username disables extension',
-            this._settings, 'quick-settings-toggle-topbar-only', this, {invert: true});
 
         this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
         this.menu.addMenuItem(this._autohideSubmenu);
@@ -1450,9 +1436,6 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'show-quick-settings')
                 this._syncShowQuickSettingsState();
 
-            if (key === 'quick-settings-toggle-topbar-only')
-                this._syncQuickSettingsToggleModeState();
-
             if (key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching')
                 this._syncAutohideState();
@@ -1462,7 +1445,6 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._syncKeepAwakeState();
         this._syncTopBarState();
         this._syncShowQuickSettingsState();
-        this._syncQuickSettingsToggleModeState();
         this._syncAutohideState();
         this._syncDesktopState();
     }
@@ -1580,13 +1562,6 @@ class UserTopMenuButton extends PanelMenu.Button {
             this._showQuickSettingsItem.setToggleState(showQuickSettings);
     }
 
-    _syncQuickSettingsToggleModeState() {
-        const topbarOnly = this._settings.get_boolean('quick-settings-toggle-topbar-only');
-
-        if (this._quickSettingsToggleModeItem.state === topbarOnly)
-            this._quickSettingsToggleModeItem.setToggleState(!topbarOnly);
-    }
-
     _syncDesktopState() {
         const primaryPaste = this._desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
         const touchpadMiddleClick = this._touchpadSettings.get_string('tap-button-map') === 'lrm';
@@ -1670,7 +1645,6 @@ export default class UsernameAvatarExtension extends Extension {
 
             if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar' ||
                 key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
-                key === 'quick-settings-toggle-topbar-only' ||
                 key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching' ||
                 LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||

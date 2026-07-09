@@ -95,25 +95,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
 
-        const quickSettingsActionRow = new Adw.SwitchRow({
-            title: 'Clicking username disables extension',
-            subtitle: 'When disabled, clicking the username tile in quick settings only hides the top-bar entry.',
-        });
-
-        settings.bind(
-            'quick-settings-toggle-topbar-only',
-            quickSettingsActionRow,
-            'active',
-            Gio.SettingsBindFlags.INVERT_BOOLEAN
-        );
-
         generalGroup.add(showHostRow);
         generalGroup.add(showUsernameRow);
         generalGroup.add(showAvatarRow);
         generalGroup.add(placeAfterNavigationRow);
         generalGroup.add(showTopBarRow);
         generalGroup.add(showQuickSettingsRow);
-        generalGroup.add(quickSettingsActionRow);
         generalPage.add(generalGroup);
 
         const desktopPage = new Adw.PreferencesPage({
@@ -148,8 +135,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         desktopPage.add(desktopGroup);
 
         const loadsPage = new Adw.PreferencesPage({
-            title: 'Loads',
-            icon_name: 'utilities-system-monitor-symbolic',
+            title: 'System Loads',
+            icon_name: 'power-profile-performance-symbolic',
         });
         const loadsGroup = new Adw.PreferencesGroup({
             title: 'System Loads',
@@ -333,24 +320,6 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         infoGroup.add(authorRow);
         infoGroup.add(licenseRow);
         infoGroup.add(versionRow);
-        const disableRow = new Adw.ActionRow({
-            title: 'Disable extension',
-            subtitle: 'Turns the extension off from Preferences.',
-        });
-        const disableButton = new Gtk.Button({
-            label: 'Disable',
-            valign: Gtk.Align.CENTER,
-        });
-        disableButton.connect('clicked', () => {
-            const launcher = Gio.Subprocess.new(
-                ['gnome-extensions', 'disable', this.metadata.uuid],
-                Gio.SubprocessFlags.NONE
-            );
-            launcher.wait_async(null, null);
-        });
-        disableRow.add_suffix(disableButton);
-        disableRow.activatable_widget = disableButton;
-        infoGroup.add(disableRow);
         aboutPage.add(infoGroup);
 
         const supportGroup = new Adw.PreferencesGroup({
@@ -370,9 +339,9 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         aboutPage.add(supportGroup);
 
         window.add(generalPage);
+        window.add(loadsPage);
         window.add(awakePage);
         window.add(desktopPage);
-        window.add(loadsPage);
         window.add(tempsPage);
         window.add(autohidePage);
         window.add(aboutPage);
