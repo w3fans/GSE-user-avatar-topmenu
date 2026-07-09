@@ -72,6 +72,13 @@
         When disabled, the right-side quick settings toggle is hidden.
       </description>
     </key>
+    <key name="quick-settings-toggle-topbar-only" type="b">
+      <default>true</default>
+      <summary>Legacy quick settings action mode</summary>
+      <description>
+        Compatibility key retained so an older cached extension module can finish unloading safely after an update. Current versions do not read or modify this setting.
+      </description>
+    </key>
     <key name="hide-topbar-fullscreen" type="b">
       <default>false</default>
       <summary>Hide the top bar while an app is fullscreen</summary>

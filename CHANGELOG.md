@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.18
+
+- Restored the unused legacy Quick Settings schema key to prevent old cached extension code from failing during an in-place update
+- Set explicit compact sizes and colors for the autohide and keep-awake top-bar icons
+
 ## 0.6.17
 
 - Removed all self-disable controls so the extension no longer interacts with GNOME's extension manager

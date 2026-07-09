@@ -1332,6 +1332,8 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._fullscreenIcon = new St.Icon({
             icon_name: 'view-fullscreen-symbolic',
             style_class: 'user-topmenu-autohide-icon',
+            icon_size: 12,
+            style: 'color: #6cc4ff;',
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -1339,6 +1341,8 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._stateIcon = new St.Icon({
             icon_name: 'weather-clear-symbolic',
             style_class: 'user-topmenu-state-icon',
+            icon_size: 12,
+            style: 'color: #f6b73c;',
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
