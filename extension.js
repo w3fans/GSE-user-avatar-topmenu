@@ -1210,9 +1210,6 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         if (this._showQuickSettingsItem.state !== showQuickSettings)
             this._showQuickSettingsItem.setToggleState(showQuickSettings);
 
-        if (this._quickSettingsToggleModeItem.state === quickSettingsToggleTopbarOnly)
-            this._quickSettingsToggleModeItem.setToggleState(!quickSettingsToggleTopbarOnly);
-
         this._syncDesktopState();
 
         if (this._hideFullscreenItem.state !== hideFullscreen)

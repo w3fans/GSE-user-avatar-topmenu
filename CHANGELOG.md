@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.20
+
+- Fixed the Quick Settings username tile failing to construct because two removed self-disable controls were still referenced during synchronization
+
 ## 0.6.19
 
 - Made metric tooltips fully opaque and explicitly raised above application windows
