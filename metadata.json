@@ -1,10 +1,11 @@
 {
   "uuid": "user-avatar-topmenu@basing.si",
   "name": "Username Avatar Top Menu",
-  "description": "Show your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU usage icons, CPU/GPU temperature indicators, hover tooltips with usage bars and hardware details, separate usage and temperature polling intervals, manual, fullscreen, media and timed keep-awake modes, smart top-bar autohide, a quick settings user toggle, and desktop shortcuts for restoring middle-click paste, primary selection copy and three-finger middle click on GNOME 50 and Fedora 44.",
+  "description": "Show your avatar and display name in the GNOME top bar with optional hostname; CPU, RAM, swap, GPU, network, disk and temperature metrics; accessible tooltips; configurable devices, ordering, thresholds and polling; persistent manual, fullscreen, media and timed keep-awake modes; animated top-bar autohide; a quick settings user toggle; diagnostics; and desktop shortcuts for primary paste and three-finger middle click.",
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
+  "gettext-domain": "user-avatar-topmenu",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 73,
+  "version": 74,
   "shell-version": [
     "45",
     "46",

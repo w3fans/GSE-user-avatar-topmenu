@@ -19,38 +19,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install schema tools
-        run: sudo apt-get update && sudo apt-get install -y jq zip
+      - name: Install validation and packaging tools
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils zip
 
       - name: Read extension metadata
         id: meta
         run: |
-          UUID="$(jq -r '.uuid' metadata.json)"
+          UUID="$(node -p "JSON.parse(require('fs').readFileSync('metadata.json')).uuid")"
           VERSION_TAG="${GITHUB_REF_NAME}"
           VERSION_TEXT="${VERSION_TAG#v}"
           echo "uuid=${UUID}" >> "$GITHUB_OUTPUT"
           echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
           echo "version_text=${VERSION_TEXT}" >> "$GITHUB_OUTPUT"
 
-      - name: Build extension zip
+      - name: Validate and build extension zip
         run: |
-          gnome_zip="${{ steps.meta.outputs.uuid }}.shell-extension.zip"
-          rm -f "$gnome_zip"
-          zip -r "$gnome_zip" \
-            extension.js \
-            metadata.json \
-            prefs.js \
-            stylesheet.css \
-            VERSION \
-            schemas/org.gnome.shell.extensions.username-avatar.gschema.xml
-          mkdir -p dist
-          cp "$gnome_zip" "dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip"
-
-      - name: Generate checksums
-        run: |
-          cd dist
-          sha256sum "${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip" \
-            > "${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.sha256"
+          if [[ "${{ steps.meta.outputs.version_tag }}" == *su ]]; then
+            bundled="${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip"
+            test -f "$bundled"
+            mkdir -p dist
+            cp "$bundled" "dist/$bundled"
+            unzip -p "$bundled" extension.js | grep -F "['sudo', '-n', 'dmidecode', '--type', '17']"
+            sha256sum "dist/$bundled" > "dist/${bundled%.zip}.sha256"
+          else
+            chmod +x build validate.sh
+            ./build
+          fi
+          test -f "dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip"
+          test -f "dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.sha256"
 
       - name: Create or update GitHub release
         uses: softprops/action-gh-release@v2
@@ -59,5 +55,34 @@ jobs:
           name: ${{ steps.meta.outputs.version_tag }}
           files: |
             dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip
-            dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.sha256
+            dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.sha256
           generate_release_notes: true
+
+      - name: Retire older personal releases
+        if: endsWith(github.ref_name, 'su')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            for (const release of releases) {
+              if (release.tag_name.endsWith('su') && release.tag_name !== context.ref.replace('refs/tags/', '')) {
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id,
+                });
+                try {
+                  await github.rest.git.deleteRef({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ref: `tags/${release.tag_name}`,
+                  });
+                } catch (error) {
+                  if (![404, 422].includes(error.status)) throw error;
+                }
+              }
+            }

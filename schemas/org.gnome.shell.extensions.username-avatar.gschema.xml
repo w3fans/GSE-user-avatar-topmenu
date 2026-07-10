@@ -11,9 +11,9 @@
     </key>
     <key name="show-username" type="b">
       <default>true</default>
-      <summary>Show username in the panel label</summary>
+      <summary>Show display name in the panel label</summary>
       <description>
-        When enabled, the top bar shows the account name next to the avatar and optional hostname.
+        When enabled, the top bar shows the account real/display name next to the avatar and optional hostname.
       </description>
     </key>
     <key name="show-avatar" type="b">
@@ -51,6 +51,11 @@
       <summary>Keep-awake timer duration</summary>
       <description>Number of minutes used when the keep-awake timer is started.</description>
     </key>
+    <key name="keep-awake-timer-deadline" type="x">
+      <default>0</default>
+      <summary>Persisted keep-awake timer deadline</summary>
+      <description>Wall-clock deadline in microseconds. This internal state lets an active timer retain its original expiry across Shell reloads.</description>
+    </key>
     <key name="place-after-navigation" type="b">
       <default>false</default>
       <summary>Place after Apps and Places</summary>
@@ -78,6 +83,11 @@
       <description>
         Compatibility key retained so an older cached extension module can finish unloading safely after an update. Current versions do not read or modify this setting.
       </description>
+    </key>
+    <key name="touchpad-previous-map" type="s">
+      <default>''</default>
+      <summary>Previous touchpad tap mapping</summary>
+      <description>Internal value used to restore the mapping that existed before enabling the middle-click convenience toggle.</description>
     </key>
     <key name="hide-topbar-fullscreen" type="b">
       <default>false</default>
@@ -157,6 +167,42 @@
       <summary>Show discrete GPU load</summary>
       <description>When enabled, show discrete GPU usage when the driver exposes it.</description>
     </key>
+    <key name="show-load-network" type="b">
+      <default>false</default>
+      <summary>Show network throughput</summary>
+      <description>When enabled, show aggregate non-loopback network receive throughput and details.</description>
+    </key>
+    <key name="network-interface" type="s">
+      <default>'auto'</default>
+      <summary>Network interface</summary>
+      <description>Interface used for throughput, or auto to aggregate physical interfaces.</description>
+    </key>
+    <key name="show-load-disk" type="b">
+      <default>false</default>
+      <summary>Show disk activity</summary>
+      <description>When enabled, show aggregate physical disk read activity and details.</description>
+    </key>
+    <key name="metric-order" type="s">
+      <default>'cpu,mem,swap,igpu,dgpu,network,disk'</default>
+      <summary>Usage metric order</summary>
+      <description>Comma-separated identifiers controlling usage metric order.</description>
+    </key>
+    <key name="igpu-device" type="s">
+      <default>'auto'</default>
+      <summary>Integrated GPU device</summary>
+      <description>DRM card identifier selected for integrated GPU metrics, or auto.</description>
+    </key>
+    <key name="dgpu-device" type="s">
+      <default>'auto'</default>
+      <summary>Discrete GPU device</summary>
+      <description>DRM card identifier selected for discrete GPU metrics, or auto.</description>
+    </key>
+    <key name="nvidia-index" type="u">
+      <range min="0" max="15"/>
+      <default>0</default>
+      <summary>NVIDIA GPU index</summary>
+      <description>Zero-based nvidia-smi GPU index used for discrete metrics on multi-GPU systems.</description>
+    </key>
     <key name="use-load-colors" type="b">
       <default>true</default>
       <summary>Use colored usage metrics</summary>
@@ -168,6 +214,11 @@
       <description>
         Controls whether temperature columns are shown after the load columns on the left side or before the load columns on the right side.
       </description>
+    </key>
+    <key name="temp-order" type="s">
+      <default>'cpu,igpu,dgpu'</default>
+      <summary>Temperature metric order</summary>
+      <description>Comma-separated identifiers controlling temperature metric order.</description>
     </key>
     <key name="temperature-unit" type="s">
       <choices>
@@ -186,22 +237,59 @@
     <key name="show-temp-cpu" type="b">
       <default>false</default>
       <summary>Show CPU temperature</summary>
-      <description>When enabled, show CPU temperature in Celsius when available.</description>
+      <description>When enabled, show CPU temperature in the configured unit when available.</description>
     </key>
     <key name="show-temp-igpu" type="b">
       <default>false</default>
       <summary>Show integrated GPU temperature</summary>
-      <description>When enabled, show integrated GPU temperature in Celsius when available.</description>
+      <description>When enabled, show integrated GPU temperature in the configured unit when available.</description>
     </key>
     <key name="show-temp-dgpu" type="b">
       <default>false</default>
       <summary>Show discrete GPU temperature</summary>
-      <description>When enabled, show discrete GPU temperature in Celsius when available.</description>
+      <description>When enabled, show discrete GPU temperature in the configured unit when available.</description>
     </key>
     <key name="use-temp-colors" type="b">
       <default>true</default>
       <summary>Use colored temperature metrics</summary>
       <description>When enabled, temperature icons and values use green, yellow, orange, and red threshold colors. When disabled, they use the default white panel color.</description>
+    </key>
+    <key name="temp-warning" type="u">
+      <range min="30" max="100"/>
+      <default>60</default>
+      <summary>Temperature warning threshold</summary>
+      <description>Temperature in Celsius where metrics change to the warning color.</description>
+    </key>
+    <key name="temp-critical" type="u">
+      <range min="40" max="120"/>
+      <default>75</default>
+      <summary>Temperature critical threshold</summary>
+      <description>Temperature in Celsius where metrics change to the critical color.</description>
+    </key>
+    <key name="metrics-click-action" type="s">
+      <choices>
+        <choice value="none"/>
+        <choice value="system-monitor"/>
+      </choices>
+      <default>'system-monitor'</default>
+      <summary>Metric click action</summary>
+      <description>Open GNOME System Monitor when a metric is clicked, or do nothing.</description>
+    </key>
+    <key name="pause-metrics-when-locked" type="b">
+      <default>true</default>
+      <summary>Pause metrics while locked</summary>
+      <description>Skip hardware polling while the session is locked.</description>
+    </key>
+    <key name="adaptive-refresh-on-battery" type="b">
+      <default>true</default>
+      <summary>Reduce polling on battery</summary>
+      <description>Multiply polling intervals while UPower reports that the computer is on battery.</description>
+    </key>
+    <key name="battery-refresh-multiplier" type="u">
+      <range min="2" max="10"/>
+      <default>3</default>
+      <summary>Battery polling multiplier</summary>
+      <description>Multiplier applied to metric intervals while on battery.</description>
     </key>
   </schema>
 </schemalist>

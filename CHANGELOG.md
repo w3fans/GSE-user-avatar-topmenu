@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0
+
+- Reworked hardware polling around bounded asynchronous subprocess and DBus operations so metrics and media checks no longer block GNOME Shell
+- Fixed GPU utilization semantics, DRM engine time normalization, CPU/GPU sensor selection, DMI empty-slot parsing, persistent keep-awake deadlines, multi-monitor top-edge geometry, stale tooltips, top-bar metric visibility, and navigation placement
+- Added network and disk throughput, GPU and NVIDIA device selection, configurable metric ordering and temperature thresholds, battery-adaptive and lock-aware polling, and keyboard-accessible System Monitor actions
+- Added keep-awake presets and remaining time to both menus, animated top-edge panel reveal, account/avatar monitoring, preserved touchpad mappings, diagnostics, reset controls, and localization infrastructure
+- Consolidated duplicated menu construction and state synchronization and moved reusable I/O and pure logic into focused modules with automated tests
+- Unified public packaging through `package-files.txt`, added required- and forbidden-content gates, corrected GitHub Release assets, and replaced the legacy release flow with validated `su`-first publishing
+
 ## 0.6.20
 
 - Fixed the Quick Settings username tile failing to construct because two removed self-disable controls were still referenced during synchronization

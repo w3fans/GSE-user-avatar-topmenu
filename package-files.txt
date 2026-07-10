@@ -1,0 +1,16 @@
+# Authoritative public extension package manifest.
+# Paths are relative to the repository root. Keep private/personal tooling out.
+extension.js
+lib/logic.js
+lib/io.js
+lib/menu.js
+lib/settings.js
+metadata.json
+prefs.js
+stylesheet.css
+VERSION
+metric-swap-symbolic.svg
+metric-gpu-symbolic.svg
+metric-cpuTemp-symbolic.svg
+metric-gpuTemp-symbolic.svg
+schemas/org.gnome.shell.extensions.username-avatar.gschema.xml

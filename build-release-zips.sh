@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v gnome-extensions >/dev/null 2>&1; then
-  echo "gnome-extensions is required"
-  exit 1
-fi
-
 if ! command -v git >/dev/null 2>&1; then
   echo "git is required"
   exit 1
@@ -17,8 +12,8 @@ repo_root="$(pwd)"
 mkdir -p "${repo_root}/dist"
 
 if [[ $# -eq 0 ]]; then
-  set -- v0.2.7
-#  set -- v0.2.0 v0.2.1 v0.2.2 v0.2.3 v0.2.4 v0.2.5 v0.2.6 v0.2.7
+  echo "Usage: ./build-release-zips.sh TAG [TAG ...]" >&2
+  exit 2
 fi
 
 tmp_root="$(mktemp -d)"
@@ -30,23 +25,25 @@ trap cleanup EXIT
 for tag in "$@"; do
   workdir="${tmp_root}/${tag}"
   uuid=""
-  git archive "$tag" | tar -x -C "$workdir" 2>/dev/null || {
-    mkdir -p "$workdir"
-    git archive "$tag" | tar -x -C "$workdir"
-  }
+  mkdir -p "$workdir"
+  git archive "$tag" | tar -x -C "$workdir"
 
   (
     cd "$workdir"
-    gnome-extensions pack \
-      --force \
-      --out-dir . \
-      --extra-source prefs.js \
-      --extra-source VERSION \
-      --extra-source metric-swap-symbolic.svg \
-      --extra-source metric-gpu-symbolic.svg \
-      --extra-source metric-cpuTemp-symbolic.svg \
-      --extra-source metric-gpuTemp-symbolic.svg \
-      .
+    if [[ -f build && -f package-files.txt ]]; then
+      chmod +x build validate.sh
+      ./build
+    else
+      command -v gnome-extensions >/dev/null || {
+        echo "gnome-extensions is required for legacy tag $tag" >&2
+        exit 1
+      }
+      extras=()
+      for file in prefs.js VERSION metric-*-symbolic.svg; do
+        [[ -f "$file" ]] && extras+=(--extra-source "$file")
+      done
+      gnome-extensions pack --force --out-dir . "${extras[@]}" .
+    fi
 
     uuid="$(python3 - <<'PY'
 import json
@@ -56,7 +53,14 @@ print(data["uuid"])
 PY
 )"
 
-    cp "${uuid}.shell-extension.zip" "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip"
+    if [[ -f "dist/${uuid}-${tag}.shell-extension.zip" ]]; then
+      cp "dist/${uuid}-${tag}.shell-extension.zip" "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip"
+      cp "dist/${uuid}-${tag}.shell-extension.sha256" "${repo_root}/dist/${uuid}-${tag}.shell-extension.sha256"
+    else
+      cp "${uuid}.shell-extension.zip" "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip"
+      sha256sum "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip" \
+        > "${repo_root}/dist/${uuid}-${tag}.shell-extension.sha256"
+    fi
     printf '%s\n' "$uuid" > .built-uuid
   )
 

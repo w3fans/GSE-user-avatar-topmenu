@@ -7,6 +7,7 @@ import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/ex
 
 export default class UsernameAvatarPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
+        const _ = this.gettext.bind(this);
         const settings = this.getSettings();
         const version = this._getDisplayVersion();
         const desktopInterfaceSettings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
@@ -15,7 +16,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         window.set_default_size(700, 620);
 
         const generalPage = new Adw.PreferencesPage({
-            title: 'General',
+            title: _('General'),
             icon_name: 'avatar-default-symbolic',
         });
         const generalGroup = new Adw.PreferencesGroup({
@@ -36,8 +37,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const showUsernameRow = new Adw.SwitchRow({
-            title: 'Display username',
-            subtitle: 'Controls whether the account name is shown in the top bar.',
+            title: 'Display name',
+            subtitle: 'Controls whether the account real/display name is shown in the top bar.',
         });
 
         settings.bind(
@@ -104,7 +105,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         generalPage.add(generalGroup);
 
         const desktopPage = new Adw.PreferencesPage({
-            title: 'Desktop',
+            title: _('Desktop'),
             icon_name: 'preferences-desktop-symbolic',
         });
         const desktopGroup = new Adw.PreferencesGroup({
@@ -118,7 +119,11 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         primaryPasteRow.active = desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
         primaryPasteRow.connect('notify::active', row => {
-            desktopInterfaceSettings.set_boolean('gtk-enable-primary-paste', row.active);
+            if (desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste') !== row.active)
+                desktopInterfaceSettings.set_boolean('gtk-enable-primary-paste', row.active);
+        });
+        desktopInterfaceSettings.connect('changed::gtk-enable-primary-paste', () => {
+            primaryPasteRow.active = desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
         });
 
         const touchpadMiddleClickRow = new Adw.SwitchRow({
@@ -127,7 +132,21 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         touchpadMiddleClickRow.active = touchpadSettings.get_string('tap-button-map') === 'lrm';
         touchpadMiddleClickRow.connect('notify::active', row => {
-            touchpadSettings.set_string('tap-button-map', row.active ? 'lrm' : 'default');
+            const current = touchpadSettings.get_string('tap-button-map');
+            if (row.active) {
+                if (current !== 'lrm')
+                    settings.set_string('touchpad-previous-map', current);
+                touchpadSettings.set_string('tap-button-map', 'lrm');
+            } else if (current === 'lrm') {
+                touchpadSettings.set_string(
+                    'tap-button-map',
+                    settings.get_string('touchpad-previous-map') || 'default'
+                );
+                settings.set_string('touchpad-previous-map', '');
+            }
+        });
+        touchpadSettings.connect('changed::tap-button-map', () => {
+            touchpadMiddleClickRow.active = touchpadSettings.get_string('tap-button-map') === 'lrm';
         });
 
         desktopGroup.add(primaryPasteRow);
@@ -135,7 +154,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         desktopPage.add(desktopGroup);
 
         const loadsPage = new Adw.PreferencesPage({
-            title: 'System Loads',
+            title: _('System Loads'),
             icon_name: 'power-profile-performance-symbolic',
         });
         const loadsGroup = new Adw.PreferencesGroup({
@@ -145,7 +164,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const loadsPositionRow = new Adw.ComboRow({
             title: 'Display position',
             subtitle: 'Left shows loads after the user item; right shows loads before the system icons.',
-            model: Gtk.StringList.new(['Left side', 'Right side']),
+            model: Gtk.StringList.new([_('Left side'), _('Right side')]),
             selected: settings.get_string('loads-position') === 'right' ? 1 : 0,
         });
         loadsPositionRow.connect('notify::selected', row => {
@@ -158,11 +177,62 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-igpu', 'Integrated GPU usage', 'Shows iGPU usage and memory details when exposed by the driver.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-dgpu', 'Discrete GPU usage', 'Shows dGPU usage and memory details when exposed by the driver.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-network', 'Network throughput', 'Shows aggregate download speed with upload speed in the tooltip.');
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-disk', 'Disk activity', 'Shows aggregate physical-disk read speed with write speed in the tooltip.');
         this._addBoundSwitch(loadsGroup, settings, 'use-load-colors', 'Use colored usage icons', 'Disable this to show usage icons and bars in the default white panel color.');
+        const metricOrderRow = new Adw.EntryRow({
+            title: 'Metric order',
+            text: settings.get_string('metric-order'),
+        });
+        metricOrderRow.add_css_class('property');
+        metricOrderRow.connect('changed', row => {
+            settings.set_string('metric-order', row.text);
+        });
+        settings.connect('changed::metric-order', () => {
+            if (metricOrderRow.text !== settings.get_string('metric-order'))
+                metricOrderRow.text = settings.get_string('metric-order');
+        });
+        loadsGroup.add(metricOrderRow);
         loadsPage.add(loadsGroup);
 
+        const deviceGroup = new Adw.PreferencesGroup({
+            title: 'GPU Devices',
+            description: 'Override automatic GPU classification when a hybrid or AMD-only system is detected incorrectly.',
+        });
+        const gpuChoices = this._getGpuChoices();
+        this._addDeviceRow(deviceGroup, settings, 'igpu-device', 'Integrated GPU', gpuChoices);
+        this._addDeviceRow(deviceGroup, settings, 'dgpu-device', 'Discrete GPU', gpuChoices);
+        this._addPollingIntervalRow(deviceGroup, settings, 'nvidia-index', 'NVIDIA GPU index', 'Zero-based nvidia-smi device index for systems with multiple NVIDIA GPUs.', 15, 0);
+        loadsPage.add(deviceGroup);
+
+        const networkGroup = new Adw.PreferencesGroup({
+            title: 'Network Device',
+            description: 'Automatic aggregates physical network interfaces and avoids double-counting virtual bridges.',
+        });
+        this._addDeviceRow(networkGroup, settings, 'network-interface', 'Network interface', this._getNetworkChoices());
+        loadsPage.add(networkGroup);
+
+        const performanceGroup = new Adw.PreferencesGroup({
+            title: 'Performance and Power',
+            description: 'Polling stops while locked and slows down on battery by default.',
+        });
+        this._addBoundSwitch(performanceGroup, settings, 'pause-metrics-when-locked', 'Pause while locked', 'Avoids unnecessary hardware polling on the lock screen.');
+        this._addBoundSwitch(performanceGroup, settings, 'adaptive-refresh-on-battery', 'Reduce polling on battery', 'Uses a longer interval while UPower reports battery operation.');
+        this._addPollingIntervalRow(performanceGroup, settings, 'battery-refresh-multiplier', 'Battery interval multiplier', 'Multiplier applied to normal metric polling intervals.', 10, 2);
+        const clickActionRow = new Adw.ComboRow({
+            title: 'Metric click action',
+            subtitle: 'Choose what happens when a metric is clicked or keyboard-activated.',
+            model: Gtk.StringList.new([_('Open System Monitor'), _('Do nothing')]),
+            selected: settings.get_string('metrics-click-action') === 'none' ? 1 : 0,
+        });
+        clickActionRow.connect('notify::selected', row => {
+            settings.set_string('metrics-click-action', row.selected === 1 ? 'none' : 'system-monitor');
+        });
+        performanceGroup.add(clickActionRow);
+        loadsPage.add(performanceGroup);
+
         const tempsPage = new Adw.PreferencesPage({
-            title: 'Temps',
+            title: _('Temperatures'),
             icon_name: 'temperature-symbolic',
         });
         const tempsGroup = new Adw.PreferencesGroup({
@@ -172,7 +242,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const tempsPositionRow = new Adw.ComboRow({
             title: 'Display position',
             subtitle: 'Left shows temperatures after loads; right shows temperatures before loads.',
-            model: Gtk.StringList.new(['Left side', 'Right side']),
+            model: Gtk.StringList.new([_('Left side'), _('Right side')]),
             selected: settings.get_string('temps-position') === 'right' ? 1 : 0,
         });
         tempsPositionRow.connect('notify::selected', row => {
@@ -183,7 +253,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const temperatureUnitRow = new Adw.ComboRow({
             title: 'Temperature unit',
             subtitle: 'Choose Celsius or Fahrenheit for panel values and tooltips.',
-            model: Gtk.StringList.new(['Celsius (°C)', 'Fahrenheit (°F)']),
+            model: Gtk.StringList.new([_('Celsius (°C)'), _('Fahrenheit (°F)')]),
             selected: settings.get_string('temperature-unit') === 'fahrenheit' ? 1 : 0,
         });
         temperatureUnitRow.connect('notify::selected', row => {
@@ -195,10 +265,26 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', 'Integrated GPU temperature', 'Shows iGPU temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', 'Discrete GPU temperature', 'Shows dGPU temperature when available.');
         this._addBoundSwitch(tempsGroup, settings, 'use-temp-colors', 'Use colored temperature icons', 'Disable this to show temperature icons and values in the default white panel color.');
+        const warningSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-warning', 'Warning threshold', 'Temperature in Celsius where the orange warning color begins.', 100, 30);
+        const criticalSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-critical', 'Critical threshold', 'Temperature in Celsius where the red critical color begins.', 120, 40);
+        warningSpin.connect('value-changed', () => {
+            if (warningSpin.get_value_as_int() >= criticalSpin.get_value_as_int())
+                criticalSpin.set_value(Math.min(120, warningSpin.get_value_as_int() + 5));
+        });
+        criticalSpin.connect('value-changed', () => {
+            if (criticalSpin.get_value_as_int() <= warningSpin.get_value_as_int())
+                warningSpin.set_value(Math.max(30, criticalSpin.get_value_as_int() - 5));
+        });
+        const tempOrderRow = new Adw.EntryRow({
+            title: 'Temperature order',
+            text: settings.get_string('temp-order'),
+        });
+        tempOrderRow.connect('changed', row => settings.set_string('temp-order', row.text));
+        tempsGroup.add(tempOrderRow);
         tempsPage.add(tempsGroup);
 
         const awakePage = new Adw.PreferencesPage({
-            title: 'Keep Awake',
+            title: _('Keep Awake'),
             icon_name: 'weather-clear-symbolic',
         });
         const awakeGroup = new Adw.PreferencesGroup({
@@ -229,7 +315,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         const timerDurationRow = new Adw.ComboRow({
             title: 'Duration',
             subtitle: 'Duration used whenever the timer is started.',
-            model: Gtk.StringList.new(['15 minutes', '30 minutes', '1 hour', '2 hours']),
+            model: Gtk.StringList.new([_('15 minutes'), _('30 minutes'), _('1 hour'), _('2 hours')]),
             selected: Math.max(0, timerDurations.indexOf(timerMinutes)),
         });
         timerDurationRow.connect('notify::selected', row => {
@@ -240,7 +326,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         awakePage.add(timerGroup);
 
         const autohidePage = new Adw.PreferencesPage({
-            title: 'Autohide',
+            title: _('Autohide'),
             icon_name: 'view-fullscreen-symbolic',
         });
         const autohideGroup = new Adw.PreferencesGroup({
@@ -267,6 +353,10 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             'active',
             Gio.SettingsBindFlags.DEFAULT
         );
+        const syncFullscreenDependency = () => {
+            hideFullscreenAllMonitorsRow.sensitive = settings.get_boolean('hide-topbar-fullscreen');
+        };
+        settings.connect('changed::hide-topbar-fullscreen', syncFullscreenDependency);
         const hideMaximizedRow = new Adw.SwitchRow({
             title: 'Hide when maximized',
             subtitle: 'Hide the top bar whenever the focused window is maximized.',
@@ -291,10 +381,45 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         autohideGroup.add(hideFullscreenAllMonitorsRow);
         autohideGroup.add(hideMaximizedRow);
         autohideGroup.add(hideTouchingRow);
+        syncFullscreenDependency();
         autohidePage.add(autohideGroup);
 
+        const diagnosticsPage = new Adw.PreferencesPage({
+            title: _('Diagnostics'),
+            icon_name: 'utilities-system-monitor-symbolic',
+        });
+        const diagnosticsGroup = new Adw.PreferencesGroup({
+            title: 'Detected Hardware',
+            description: 'Read-only local information used by the extension. No data is transmitted.',
+        });
+        for (const [title, subtitle] of this._getDiagnostics())
+            diagnosticsGroup.add(new Adw.ActionRow({title, subtitle}));
+        diagnosticsPage.add(diagnosticsGroup);
+
+        const resetGroup = new Adw.PreferencesGroup({
+            title: 'Reset',
+            description: 'Restore every extension preference to its schema default.',
+        });
+        const resetRow = new Adw.ActionRow({
+            title: 'Reset extension settings',
+            subtitle: 'Desktop-wide primary-paste and touchpad settings are not reset.',
+        });
+        const resetButton = new Gtk.Button({
+            label: 'Reset to Defaults',
+            valign: Gtk.Align.CENTER,
+            css_classes: ['destructive-action'],
+        });
+        resetButton.connect('clicked', () => {
+            for (const key of settings.list_keys())
+                settings.reset(key);
+        });
+        resetRow.add_suffix(resetButton);
+        resetRow.activatable_widget = resetButton;
+        resetGroup.add(resetRow);
+        diagnosticsPage.add(resetGroup);
+
         const aboutPage = new Adw.PreferencesPage({
-            title: 'About',
+            title: _('About'),
             icon_name: 'help-about-symbolic',
         });
         const infoGroup = new Adw.PreferencesGroup({
@@ -302,7 +427,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const descriptionRow = new Adw.ActionRow({
             title: 'Description',
-            subtitle: 'Shows your avatar and username in the GNOME top bar with optional hostname, hardware-style CPU, RAM, swap and GPU usage icons, CPU/GPU temperature indicators, hover tooltips with usage bars and hardware details, separate polling intervals, manual and automatic keep-awake modes, smart top-bar autohide, a quick settings user tile, and desktop convenience toggles for GNOME 50 and Fedora 44.',
+            subtitle: this.metadata.description,
         });
         const authorRow = new Adw.ActionRow({
             title: 'Author',
@@ -344,22 +469,27 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         window.add(desktopPage);
         window.add(tempsPage);
         window.add(autohidePage);
+        window.add(diagnosticsPage);
         window.add(aboutPage);
+        this._localizeWidgetTree(window, _);
     }
 
     _addBoundSwitch(group, settings, key, title, subtitle) {
-        const row = new Adw.SwitchRow({title, subtitle});
+        const row = new Adw.SwitchRow({
+            title: this.gettext(title),
+            subtitle: this.gettext(subtitle),
+        });
         settings.bind(key, row, 'active', Gio.SettingsBindFlags.DEFAULT);
         group.add(row);
     }
 
-    _addPollingIntervalRow(group, settings, key, title, subtitle, upper) {
+    _addPollingIntervalRow(group, settings, key, title, subtitle, upper, lower = 1) {
         const row = new Adw.ActionRow({
-            title,
-            subtitle,
+            title: this.gettext(title),
+            subtitle: this.gettext(subtitle),
         });
         const adjustment = new Gtk.Adjustment({
-            lower: 1,
+            lower,
             upper,
             step_increment: 1,
             page_increment: 5,
@@ -381,6 +511,108 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         row.add_suffix(spin);
         row.activatable_widget = spin;
         group.add(row);
+        return spin;
+    }
+
+    _getGpuChoices() {
+        const choices = [{id: 'auto', label: 'Automatic'}];
+        try {
+            const directory = Gio.File.new_for_path('/sys/class/drm');
+            const enumerator = directory.enumerate_children(
+                'standard::name', Gio.FileQueryInfoFlags.NONE, null);
+            let info;
+            while ((info = enumerator.next_file(null))) {
+                const name = info.get_name();
+                if (/^card\d+$/.test(name) &&
+                    GLib.file_test(`/sys/class/drm/${name}/device`, GLib.FileTest.IS_DIR))
+                    choices.push({id: name, label: name});
+            }
+            enumerator.close(null);
+        } catch (_error) {
+            // Keep the automatic choice when sysfs is unavailable.
+        }
+        return choices;
+    }
+
+    _getNetworkChoices() {
+        const choices = [{id: 'auto', label: 'Automatic physical interfaces'}];
+        try {
+            const enumerator = Gio.File.new_for_path('/sys/class/net').enumerate_children(
+                'standard::name', Gio.FileQueryInfoFlags.NONE, null);
+            let info;
+            while ((info = enumerator.next_file(null))) {
+                const name = info.get_name();
+                if (name !== 'lo')
+                    choices.push({id: name, label: name});
+            }
+            enumerator.close(null);
+        } catch (_error) {
+            // Keep the automatic choice.
+        }
+        return choices;
+    }
+
+    _addDeviceRow(group, settings, key, title, choices) {
+        const current = settings.get_string(key);
+        const selected = Math.max(0, choices.findIndex(choice => choice.id === current));
+        const row = new Adw.ComboRow({
+            title: this.gettext(title),
+            subtitle: this.gettext('Automatic is recommended unless the wrong GPU is shown.'),
+            model: Gtk.StringList.new(choices.map(choice => this.gettext(choice.label))),
+            selected,
+        });
+        row.connect('notify::selected', widget => {
+            settings.set_string(key, choices[widget.selected]?.id ?? 'auto');
+        });
+        group.add(row);
+    }
+
+    _getDiagnostics() {
+        const gpuNames = this._getGpuChoices().slice(1).map(choice => choice.label);
+        const hwmon = [];
+        try {
+            const enumerator = Gio.File.new_for_path('/sys/class/hwmon').enumerate_children(
+                'standard::name', Gio.FileQueryInfoFlags.NONE, null);
+            let info;
+            while ((info = enumerator.next_file(null))) {
+                const directoryName = info.get_name();
+                const nameFile = Gio.File.new_for_path(`/sys/class/hwmon/${directoryName}/name`);
+                try {
+                    const [ok, contents] = nameFile.load_contents(null);
+                    hwmon.push(ok
+                        ? new TextDecoder().decode(contents).trim()
+                        : directoryName);
+                } catch (_error) {
+                    hwmon.push(directoryName);
+                }
+            }
+            enumerator.close(null);
+        } catch (_error) {
+            // Report the empty state below.
+        }
+        return [
+            ['DRM devices', gpuNames.length ? gpuNames.join(', ') : 'No DRM cards detected'],
+            ['Hardware monitors', hwmon.length ? [...new Set(hwmon)].join(', ') : 'No hwmon devices detected'],
+            ['NVIDIA metrics', GLib.find_program_in_path('nvidia-smi') ? 'nvidia-smi is installed' : 'nvidia-smi is not installed'],
+            ['Memory inventory', GLib.find_program_in_path('dmidecode') ? 'dmidecode is installed; access may be restricted' : 'dmidecode is not installed'],
+        ];
+    }
+
+    _localizeWidgetTree(widget, gettext) {
+        if (widget instanceof Adw.PreferencesPage || widget instanceof Adw.PreferencesGroup ||
+            widget instanceof Adw.ActionRow || widget instanceof Adw.EntryRow) {
+            if (widget.title)
+                widget.title = gettext(widget.title);
+        }
+        if (widget instanceof Adw.PreferencesGroup && widget.description)
+            widget.description = gettext(widget.description);
+        if (widget instanceof Adw.ActionRow && widget.subtitle)
+            widget.subtitle = gettext(widget.subtitle);
+        if (widget instanceof Gtk.Button && widget.label)
+            widget.label = gettext(widget.label);
+
+        for (let child = widget.get_first_child?.(); child; child = child.get_next_sibling())
+            this._localizeWidgetTree(child, gettext);
     }
 
     _getDisplayVersion() {

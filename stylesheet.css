@@ -1,3 +1,11 @@
+.user-topmenu-avatar {
+    border-radius: 999px;
+}
+
+.user-topmenu-panel-reveal-edge {
+    background-color: transparent;
+}
+
 .user-topmenu-state-icon {
     icon-size: 12px;
 }
@@ -13,15 +21,37 @@
 
 .user-topmenu-load-metric {
     spacing: 3px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.user-topmenu-rate-metric {
+    spacing: 4px;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .user-topmenu-load-label {
     font-weight: bold;
 }
 
+.user-topmenu-load-qualifier {
+    font-size: 8px;
+    font-weight: bold;
+}
+
 .user-topmenu-load-column {
     background-color: rgba(255, 255, 255, 0.22);
     border-radius: 2px;
+}
+
+.user-topmenu-load-fill {
+    border-radius: 2px;
+}
+
+.user-topmenu-temp-column {
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .user-topmenu-temp-label {
@@ -50,5 +80,9 @@
 
 .user-topmenu-tooltip-bar-empty {
     background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+}
+
+.user-topmenu-tooltip-bar-fill {
     border-radius: 3px;
 }

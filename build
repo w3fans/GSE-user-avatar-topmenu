@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_root"
+
+./validate.sh
+
+uuid="$(node -p "JSON.parse(require('fs').readFileSync('metadata.json')).uuid")"
+version="$(tr -d '[:space:]' < VERSION)"
+tag="v${version}"
+bundle="${uuid}.shell-extension.zip"
+versioned="dist/${uuid}-${tag}.shell-extension.zip"
+
+rm -f "$bundle" "$versioned"
+mkdir -p dist
+
+manifest="$(mktemp)"
+cleanup() {
+    rm -f "$manifest"
+}
+trap cleanup EXIT
+
+while IFS= read -r file; do
+    [[ -z "$file" || "$file" == \#* ]] && continue
+    printf '%s\n' "$file" >> "$manifest"
+done < package-files.txt
+
+zip -q "$bundle" -@ < "$manifest"
+cp "$bundle" "$versioned"
+
+contents="$(unzip -Z1 "$bundle")"
+while IFS= read -r required; do
+    [[ -z "$required" || "$required" == \#* ]] && continue
+    grep -Fxq "$required" <<< "$contents" || {
+        echo "Required package file missing: $required" >&2
+        exit 1
+    }
+done < package-files.txt
+
+if grep -Eq '(^|/)(\.codex|dist|screenshots?)(/|$)|gschemas\.compiled|(^|/)(build|release\.sh|validate\.sh)$' <<< "$contents"; then
+    echo "Forbidden file found in public package" >&2
+    exit 1
+fi
+
+sha256sum "$versioned" > "${versioned%.zip}.sha256"
+echo "Built $versioned"

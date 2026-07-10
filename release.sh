@@ -1,145 +1,159 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-inc="${1:-0.0.1}"
-msg="${2:-}"
+mode="${1:-patch}"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_root"
 
-if [[ "$inc" == "-h" || "$inc" == "--help" ]]; then
-  cat <<'EOF'
-Usage: ./release.sh [0.0.1|0.1.0|1.0.0|vX.Y.Z] ["tag message"]
+if [[ "$mode" == "-h" || "$mode" == "--help" ]]; then
+    cat <<'EOF'
+Usage: ./release.sh [patch|beta|stable|major|vX.Y.Z]
 
-Defaults:
-  increment   0.0.1
-  tag message Release vX.Y.Z
+patch   Increment the patch number on the current release line.
+beta    Start the next odd minor release line.
+stable  Start the next even minor release line.
+major   Start the next major release line.
+vX.Y.Z  Deliberate recovery override.
 
-Version convention:
-  even minor  stable release, for example 0.6.x
-  odd minor   beta/development release, for example 0.5.x
+The script validates and commits the public release, publishes and verifies the
+matching personal vX.Y.Zsu tag first, removes the preceding su tag, then pushes
+main and publishes vX.Y.Z last.
 EOF
-  exit 0
+    exit 0
 fi
 
-git rev-parse --is-inside-work-tree >/dev/null
+for command in git node zip unzip curl xgettext; do
+    command -v "$command" >/dev/null || {
+        echo "$command is required" >&2
+        exit 1
+    }
+done
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required"
-  exit 1
-fi
+[[ "$(git branch --show-current)" == "main" ]] || {
+    echo "Releases must start from main" >&2
+    exit 1
+}
+git diff --cached --quiet || {
+    echo "The index already contains staged changes" >&2
+    exit 1
+}
 
-if ! command -v gnome-extensions >/dev/null 2>&1; then
-  echo "gnome-extensions is required"
-  exit 1
-fi
-
-branch="$(git rev-parse --abbrev-ref HEAD)"
-if ! git remote get-url origin >/dev/null 2>&1; then
-  echo "Missing git remote 'origin'"
-  exit 1
-fi
-
-if ! git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
-  git push --set-upstream origin "$branch"
-fi
-
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "Working tree is not clean. Commit or stash changes first."
-  exit 1
-fi
-
-version_file="VERSION"
-metadata_file="metadata.json"
-schema_dir="schemas"
-schema_xml="${schema_dir}/org.gnome.shell.extensions.username-avatar.gschema.xml"
-
-if [[ ! -f "$version_file" || ! -f "$metadata_file" || ! -f "$schema_xml" ]]; then
-  echo "Missing required release files"
-  exit 1
-fi
-
-current="$(tr -d '[:space:]' < "$version_file")"
+current="$(tr -d '[:space:]' < VERSION)"
 IFS='.' read -r major minor patch <<< "$current"
+[[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ && "$patch" =~ ^[0-9]+$ ]] || {
+    echo "Invalid VERSION: $current" >&2
+    exit 1
+}
 
-if [[ -z "${major:-}" || -z "${minor:-}" || -z "${patch:-}" ]]; then
-  echo "Invalid VERSION value: $current"
-  exit 1
-fi
-
-if [[ "$inc" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-  next="${inc#v}"
-elif [[ "$inc" == "0.0.1" ]]; then
-  next="${major}.${minor}.$((patch + 1))"
-elif [[ "$inc" == "0.1.0" ]]; then
-  next="${major}.$((minor + 1)).0"
-elif [[ "$inc" == "1.0.0" ]]; then
-  next="$((major + 1)).0.0"
-else
-  echo "Unsupported increment: $inc"
-  exit 1
-fi
+case "$mode" in
+patch) next="${major}.${minor}.$((patch + 1))" ;;
+beta)
+    next_minor=$((minor + 1))
+    (( next_minor % 2 == 1 )) || next_minor=$((next_minor + 1))
+    next="${major}.${next_minor}.0"
+    ;;
+stable)
+    next_minor=$((minor + 1))
+    (( next_minor % 2 == 0 )) || next_minor=$((next_minor + 1))
+    next="${major}.${next_minor}.0"
+    ;;
+major) next="$((major + 1)).0.0" ;;
+v[0-9]*.[0-9]*.[0-9]*) next="${mode#v}" ;;
+*) echo "Unknown release mode: $mode" >&2; exit 2 ;;
+esac
 
 tag="v${next}"
+su_tag="${tag}su"
+git rev-parse -q --verify "refs/tags/$tag" >/dev/null && {
+    echo "Tag already exists: $tag" >&2
+    exit 1
+}
+git rev-parse -q --verify "refs/tags/$su_tag" >/dev/null && {
+    echo "Tag already exists: $su_tag" >&2
+    exit 1
+}
+grep -Fq "## ${next}" CHANGELOG.md || {
+    echo "Add a '## ${next}' entry to CHANGELOG.md before releasing" >&2
+    exit 1
+}
 
-if git rev-parse "$tag" >/dev/null 2>&1; then
-  echo "Tag already exists: $tag"
-  exit 1
+printf '%s\n' "$next" > VERSION
+NEXT_VERSION="$next" node --input-type=module <<'NODE'
+import fs from 'node:fs';
+const metadata = JSON.parse(fs.readFileSync('metadata.json'));
+metadata.version = Number(metadata.version ?? 0) + 1;
+fs.writeFileSync('metadata.json', `${JSON.stringify(metadata, null, 2)}\n`);
+NODE
+
+chmod +x po/update-pot.sh
+po/update-pot.sh
+
+./build
+
+git add \
+    .github/workflows/release.yml \
+    CHANGELOG.md README.md TESTING.md VERSION metadata.json extension.js prefs.js stylesheet.css \
+    schemas package-files.txt package.json lib po tests \
+    build validate.sh ego-check.sh build-release-zips.sh release.sh \
+    metric-*-symbolic.svg
+git commit -m "Release ${tag}"
+
+chmod +x .codex/build-personal-ram.sh
+.codex/build-personal-ram.sh
+uuid="$(node -p "JSON.parse(require('fs').readFileSync('metadata.json')).uuid")"
+personal_zip="dist/${uuid}-${su_tag}.shell-extension.zip"
+[[ -f "$personal_zip" ]] || {
+    echo "Personal artifact missing: $personal_zip" >&2
+    exit 1
+}
+
+worktree="$(mktemp -d)"
+cleanup() {
+    git worktree remove --force "$worktree" >/dev/null 2>&1 || true
+    rm -rf "$worktree"
+}
+trap cleanup EXIT
+git worktree add --detach "$worktree" HEAD
+(
+    cd "$worktree"
+    sed -i \
+        "s/runCommandAsync(\['dmidecode', '--type', '17'\]/runCommandAsync(['sudo', '-n', 'dmidecode', '--type', '17']/" \
+        extension.js
+    printf '%ssu\n' "$next" > VERSION
+    cp "$repo_root/$personal_zip" "${uuid}-${su_tag}.shell-extension.zip"
+    git add extension.js VERSION
+    git add -f "${uuid}-${su_tag}.shell-extension.zip"
+    git commit -m "Release ${su_tag}"
+    git tag -a "$su_tag" -m "Release ${su_tag}"
+    GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$su_tag"
+)
+
+wait_for_release_asset() {
+    local release_tag="$1"
+    local asset="${uuid}-${release_tag}.shell-extension.zip"
+    local url="https://api.github.com/repos/w3fans/GSE-user-avatar-topmenu/releases/tags/${release_tag}"
+    for _attempt in $(seq 1 30); do
+        if curl --fail --silent "$url" | grep -Fq "$asset"; then
+            return 0
+        fi
+        sleep 10
+    done
+    echo "GitHub Release asset was not verified for $release_tag" >&2
+    return 1
+}
+
+wait_for_release_asset "$su_tag"
+
+previous_su="$(git tag --list 'v*su' --sort=-version:refname | grep -Fxv "$su_tag" | head -n1 || true)"
+if [[ -n "$previous_su" ]]; then
+    GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' \
+        git push origin ":refs/tags/${previous_su}" || true
+    git tag -d "$previous_su"
 fi
 
-if [[ -z "$msg" ]]; then
-  msg="Release ${tag}"
-fi
+git tag -a "$tag" -m "Release ${tag}"
+GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin main
+GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$tag"
+wait_for_release_asset "$tag"
 
-uuid="$(python3 - <<'PY'
-import json
-from pathlib import Path
-data = json.loads(Path("metadata.json").read_text())
-print(data["uuid"])
-PY
-)"
-bundle="${uuid}.shell-extension.zip"
-
-metadata_version_before="$(python3 - <<'PY'
-import json
-from pathlib import Path
-data = json.loads(Path("metadata.json").read_text())
-print(int(data.get("version", 0)))
-PY
-)"
-metadata_version_after=$((metadata_version_before + 1))
-
-printf '%s\n' "$next" > "$version_file"
-
-NEXT_VERSION="$next" METADATA_VERSION="$metadata_version_after" python3 - <<'PY'
-import json
-import os
-from pathlib import Path
-
-path = Path("metadata.json")
-data = json.loads(path.read_text())
-data["version"] = int(os.environ["METADATA_VERSION"])
-path.write_text(json.dumps(data, indent=2) + "\n")
-PY
-
-rm -f "$bundle"
-gnome-extensions pack --force --out-dir . --extra-source prefs.js --extra-source VERSION \
-  --extra-source metric-swap-symbolic.svg \
-  --extra-source metric-gpu-symbolic.svg \
-  --extra-source metric-cpuTemp-symbolic.svg \
-  --extra-source metric-gpuTemp-symbolic.svg .
-
-git add "$version_file" "$metadata_file" "$schema_xml"
-git add prefs.js extension.js stylesheet.css README.md CHANGELOG.md .gitignore
-git add metric-*-symbolic.svg
-
-git commit -m "chore(release): ${tag}"
-
-mkdir -p dist
-cp "$bundle" "dist/${uuid}-${tag}.shell-extension.zip"
-
-git tag -a "$tag" -m "$msg"
-git push
-git push origin "$tag"
-
-echo "Released ${tag}"
-echo "VERSION: ${current} -> ${next}"
-echo "metadata version: ${metadata_version_before} -> ${metadata_version_after}"
-echo "Release zip: dist/${uuid}-${tag}.shell-extension.zip"
+echo "Released $su_tag followed by $tag"

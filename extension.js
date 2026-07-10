@@ -3,6 +3,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -10,6 +11,30 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+
+import {dbusCallAsync, runCommandAsync} from './lib/io.js';
+import {
+    addKeepAwakeControls,
+    addSharedMenuSections,
+    configureMenuTranslation,
+    syncKeepAwakeControls,
+    syncSharedMenuSections,
+    translate,
+} from './lib/menu.js';
+import {
+    calculateCpuUsage,
+    calculateEngineUsage,
+    calculateMemoryUsage,
+    clampPercent,
+    formatBinaryBytes,
+    formatTemperature as formatMetricTemperature,
+    getTemperatureColor,
+    parseProcDiskstats,
+    parseProcNetDev,
+    parseDmiMemory,
+    shouldHidePanel,
+    timerIsActive,
+} from './lib/logic.js';
 
 const AVATAR_SIZE = 24;
 const INHIBIT_IDLE_FLAG = 8;
@@ -20,6 +45,8 @@ const LOAD_KEYS = [
     'show-load-swap',
     'show-load-igpu',
     'show-load-dgpu',
+    'show-load-network',
+    'show-load-disk',
 ];
 const TEMP_KEYS = [
     'show-temp-cpu',
@@ -32,6 +59,8 @@ const LOAD_COLORS = {
     swap: '#f8e45c',
     igpu: '#c061cb',
     dgpu: '#ff7800',
+    network: '#33d17a',
+    disk: '#dc8add',
 };
 const DEFAULT_METRIC_COLOR = '#ffffff';
 const METRIC_ICON_FALLBACKS = {
@@ -41,44 +70,24 @@ const METRIC_ICON_FALLBACKS = {
     gpu: 'video-display-symbolic',
     cpuTemp: 'temperature-symbolic',
     gpuTemp: 'temperature-symbolic',
+    network: 'network-wired-symbolic',
+    disk: 'drive-harddisk-symbolic',
 };
 const NVIDIA_METRICS_CACHE_MS = 5000;
 const NVIDIA_FAILURE_CACHE_MS = 60000;
-let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null};
-let memoryHardwareCache = null;
+const TEXT_FILE_CACHE_USEC = 250000;
+let nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null, pending: false};
+let memoryHardwareCache = {timestamp: 0, value: null, pending: false};
 const gpuNameCache = new Map();
 const textFileCache = new Map();
-
-function addSettingsSwitch(menu, label, settings, key, owner, options = {}) {
-    const item = new PopupMenu.PopupSwitchMenuItem(
-        label,
-        options.invert ? !settings.get_boolean(key) : settings.get_boolean(key)
-    );
-
-    item.connectObject('toggled', (_item, state) => {
-        settings.set_boolean(key, options.invert ? !state : state);
-    }, owner);
-    owner._switchItems?.push(item);
-    menu.addMenuItem(item);
-    return item;
-}
-
-function addCustomSwitch(menu, label, state, owner, callback) {
-    const item = new PopupMenu.PopupSwitchMenuItem(label, state);
-
-    item.connectObject('toggled', (_item, nextState) => {
-        callback(nextState);
-    }, owner);
-    owner._switchItems?.push(item);
-    menu.addMenuItem(item);
-    return item;
-}
+const directoryCache = new Map();
+let systemOnBattery = false;
 
 function readTextFile(path) {
     const now = GLib.get_monotonic_time();
     const cached = textFileCache.get(path);
 
-    if (!cached || now - cached.timestamp > 1000000) {
+    if (!cached || now - cached.timestamp > TEXT_FILE_CACHE_USEC) {
         const state = cached ?? {value: null, pending: false, timestamp: 0};
         textFileCache.set(path, state);
 
@@ -107,25 +116,56 @@ function readNumberFile(path) {
 }
 
 function listDirectory(path) {
-    const names = [];
-
-    try {
-        const enumerator = Gio.File.new_for_path(path).enumerate_children(
+    const now = GLib.get_monotonic_time();
+    const state = directoryCache.get(path) ?? {
+        value: [],
+        timestamp: 0,
+        pending: false,
+    };
+    directoryCache.set(path, state);
+    if (!state.pending && now - state.timestamp > 5_000_000) {
+        state.pending = true;
+        const file = Gio.File.new_for_path(path);
+        file.enumerate_children_async(
             'standard::name',
             Gio.FileQueryInfoFlags.NONE,
-            null
+            GLib.PRIORITY_DEFAULT,
+            null,
+            (source, result) => {
+                let enumerator;
+                try {
+                    enumerator = source.enumerate_children_finish(result);
+                } catch (_error) {
+                    state.value = [];
+                    state.timestamp = GLib.get_monotonic_time();
+                    state.pending = false;
+                    return;
+                }
+
+                const names = [];
+                const readNextBatch = () => {
+                    enumerator.next_files_async(64, GLib.PRIORITY_DEFAULT, null, (current, nextResult) => {
+                        try {
+                            const infos = current.next_files_finish(nextResult);
+                            if (infos.length > 0) {
+                                names.push(...infos.map(info => info.get_name()));
+                                readNextBatch();
+                                return;
+                            }
+                            state.value = names;
+                        } catch (_error) {
+                            state.value = [];
+                        }
+                        state.timestamp = GLib.get_monotonic_time();
+                        state.pending = false;
+                        enumerator.close_async(GLib.PRIORITY_DEFAULT, null, null);
+                    });
+                };
+                readNextBatch();
+            }
         );
-        let info;
-
-        while ((info = enumerator.next_file(null)))
-            names.push(info.get_name());
-
-        enumerator.close(null);
-    } catch (_error) {
-        return names;
     }
-
-    return names;
+    return state.value;
 }
 
 function formatPercent(value) {
@@ -133,60 +173,40 @@ function formatPercent(value) {
 }
 
 function getRoundedPercent(value) {
-    return value === null || Number.isNaN(value) ? null : Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function getTempColor(temp) {
-    if (temp === null || Number.isNaN(temp))
-        return '#9a9996';
-
-    if (temp < 40)
-        return '#57e389';
-
-    if (temp < 60)
-        return '#f8e45c';
-
-    if (temp < 75)
-        return '#ff7800';
-
-    return '#e01b24';
+    return clampPercent(value);
 }
 
 function formatTemperature(temp, unit, decimals) {
-    if (temp === null || Number.isNaN(temp))
-        return unit === 'fahrenheit' ? '--°F' : '--°C';
-
-    const value = unit === 'fahrenheit' ? temp * 9 / 5 + 32 : temp;
-    return `${value.toFixed(decimals ? 1 : 0)}°${unit === 'fahrenheit' ? 'F' : 'C'}`;
+    return formatMetricTemperature(temp, unit, decimals);
 }
 
-function isMediaPlaying() {
+async function isMediaPlaying(cancellable = null) {
     try {
-        const namesResult = Gio.DBus.session.call_sync(
+        const namesResult = await dbusCallAsync(
+            Gio.DBus.session,
             'org.freedesktop.DBus',
             '/org/freedesktop/DBus',
             'org.freedesktop.DBus',
             'ListNames',
             null,
             new GLib.VariantType('(as)'),
-            Gio.DBusCallFlags.NONE,
             1000,
-            null
+            cancellable
         );
         const [names] = namesResult.recursiveUnpack();
 
         for (const name of names.filter(value => value.startsWith('org.mpris.MediaPlayer2.'))) {
             try {
-                const statusResult = Gio.DBus.session.call_sync(
+                const statusResult = await dbusCallAsync(
+                    Gio.DBus.session,
                     name,
                     '/org/mpris/MediaPlayer2',
                     'org.freedesktop.DBus.Properties',
                     'Get',
                     new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'PlaybackStatus']),
                     new GLib.VariantType('(v)'),
-                    Gio.DBusCallFlags.NONE,
                     500,
-                    null
+                    cancellable
                 );
                 const [status] = statusResult.recursiveUnpack();
 
@@ -204,33 +224,30 @@ function isMediaPlaying() {
 }
 
 function formatGiB(kib) {
-    return `${Math.round(kib / 1024 / 1024)}GB`;
+    return formatBinaryBytes(kib * 1024);
 }
 
 function formatBytes(bytes) {
-    if (bytes === null || Number.isNaN(bytes))
-        return '--';
-
-    return `${Math.round(bytes / 1024 / 1024 / 1024)}GB`;
+    return formatBinaryBytes(bytes);
 }
 
-function runCommand(argv) {
-    try {
-        const process = Gio.Subprocess.new(
-            argv,
-            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE
-        );
-        const [, stdout] = process.communicate_utf8(null, null);
-        return process.get_successful() ? stdout.trim() : '';
-    } catch (_error) {
-        return '';
-    }
+function formatMemoryHardwareModules(modules) {
+    const types = [...new Set(modules.map(module => module.type).filter(Boolean))];
+    const speeds = [...new Set(modules.map(module => module.speed).filter(Boolean))];
+    const moduleLines = modules.map(module => [
+        module.locator,
+        module.size,
+        module.speed,
+        module.part,
+    ].filter(Boolean).join(' · '));
+    return [
+        `${modules.length} populated ${modules.length === 1 ? 'DIMM' : 'DIMMs'}${types.length ? ` · ${types.join('/')}` : ''}`,
+        speeds.length ? `Speed: ${speeds.join('/')}` : '',
+        ...moduleLines.slice(0, 4),
+    ].filter(Boolean).join('\n');
 }
 
-function getMemoryHardwareInfo() {
-    if (memoryHardwareCache !== null)
-        return memoryHardwareCache;
-
+function getMemoryHardwareInfo(cancellable = null) {
     const modules = [];
 
     for (const controller of listDirectory('/sys/devices/system/edac/mc').filter(name => /^mc\d+$/.test(name))) {
@@ -249,43 +266,30 @@ function getMemoryHardwareInfo() {
         }
     }
 
-    if (modules.length === 0) {
-        const dmi = runCommand(['dmidecode', '--type', '17']);
+    if (modules.length > 0) {
+        memoryHardwareCache.value = formatMemoryHardwareModules(modules);
+        memoryHardwareCache.timestamp = GLib.get_monotonic_time() / 1000;
+        return memoryHardwareCache.value;
+    }
 
-        for (const block of dmi.split(/\n\s*\n/)) {
-            const size = block.match(/^\s*Size:\s*(?!No Module Installed)(.+)$/m)?.[1];
-            if (!size)
-                continue;
-
-            modules.push({
-                type: block.match(/^\s*Type:\s*(.+)$/m)?.[1] ?? '',
-                size,
-                locator: block.match(/^\s*Locator:\s*(.+)$/m)?.[1] ?? '',
-                speed: block.match(/^\s*Configured Memory Speed:\s*(.+)$/m)?.[1] ??
-                    block.match(/^\s*Speed:\s*(.+)$/m)?.[1] ?? '',
-                part: block.match(/^\s*Part Number:\s*(.+)$/m)?.[1]?.trim() ?? '',
+    const now = GLib.get_monotonic_time() / 1000;
+    if (!memoryHardwareCache.pending &&
+        (!memoryHardwareCache.timestamp || now - memoryHardwareCache.timestamp >= 60000)) {
+        memoryHardwareCache.pending = true;
+        runCommandAsync(['dmidecode', '--type', '17'], {timeoutMs: 3000, cancellable})
+            .then(dmi => {
+                const dmiModules = parseDmiMemory(dmi);
+                memoryHardwareCache.value = dmiModules.length > 0
+                    ? formatMemoryHardwareModules(dmiModules)
+                    : 'RAM hardware inventory unavailable to this user';
+            })
+            .finally(() => {
+                memoryHardwareCache.timestamp = GLib.get_monotonic_time() / 1000;
+                memoryHardwareCache.pending = false;
             });
-        }
     }
 
-    if (modules.length === 0) {
-        return 'RAM hardware inventory unavailable to this user';
-    }
-
-    const types = [...new Set(modules.map(module => module.type).filter(Boolean))];
-    const speeds = [...new Set(modules.map(module => module.speed).filter(Boolean))];
-    const moduleLines = modules.map(module => [
-        module.locator,
-        module.size,
-        module.speed,
-        module.part,
-    ].filter(Boolean).join(' · '));
-    memoryHardwareCache = [
-        `${modules.length} populated ${modules.length === 1 ? 'DIMM' : 'DIMMs'}${types.length ? ` · ${types.join('/')}` : ''}`,
-        speeds.length ? `Speed: ${speeds.join('/')}` : '',
-        ...moduleLines.slice(0, 4),
-    ].filter(Boolean).join('\n');
-    return memoryHardwareCache;
+    return memoryHardwareCache.value ?? 'RAM hardware inventory loading…';
 }
 
 function parseMeminfo() {
@@ -332,12 +336,14 @@ function getGpuDisplayName(device) {
     if (gpuNameCache.has(device.path))
         return gpuNameCache.get(device.path);
 
-    const properties = runCommand(['udevadm', 'info', '--query=property', `--path=${device.path}`]);
-    const model = properties.match(/^ID_MODEL_FROM_DATABASE=(.+)$/m)?.[1] ??
-        properties.match(/^ID_MODEL=(.+)$/m)?.[1] ??
-        device.name;
-    gpuNameCache.set(device.path, model);
-    return model;
+    gpuNameCache.set(device.path, device.name);
+    runCommandAsync(['udevadm', 'info', '--query=property', `--path=${device.path}`], {timeoutMs: 2000})
+        .then(properties => {
+            const model = properties.match(/^ID_MODEL_FROM_DATABASE=(.+)$/m)?.[1] ??
+                properties.match(/^ID_MODEL=(.+)$/m)?.[1] ?? device.name;
+            gpuNameCache.set(device.path, model);
+        });
+    return device.name;
 }
 
 function getGpuDevices() {
@@ -363,18 +369,20 @@ function getGpuDevices() {
         });
     }
 
-    if (devices.length > 1) {
-        for (const device of devices) {
-            if (device.vendor === '0x1002' && device.bootVga)
-                device.type = 'igpu';
-        }
+    for (const device of devices) {
+        if (device.vendor === '0x1002' && device.bootVga)
+            device.type = 'igpu';
     }
 
     return devices;
 }
 
-function getGpuByType(type) {
-    return getGpuDevices().find(device => device.type === type) ?? null;
+function getGpuByType(type, selected = 'auto') {
+    const devices = getGpuDevices();
+    if (selected !== 'auto')
+        return devices.find(device => device.card === selected) ?? null;
+
+    return devices.find(device => device.type === type) ?? null;
 }
 
 function getGpuEngineStat(device) {
@@ -382,7 +390,7 @@ function getGpuEngineStat(device) {
         `/sys/class/drm/${device.card}/engine`,
         `${device.path}/engine`,
     ];
-    let busy = 0;
+    const engines = {};
     let found = false;
 
     for (const root of engineRoots) {
@@ -390,25 +398,27 @@ function getGpuEngineStat(device) {
             const value = readNumberFile(`${root}/${engine}/busy`);
 
             if (value !== null) {
-                busy += value;
+                engines[engine] = value;
                 found = true;
             }
         }
 
         if (found)
-            return {busy, time: GLib.get_monotonic_time()};
+            return {engines, time: GLib.get_monotonic_time()};
     }
 
     return null;
 }
 
-function getGpuMetrics(type, previousStat = null) {
-    if (type === 'dgpu') {
-        const nvidia = getNvidiaMetrics();
+function getGpuMetrics(type, previousStat = null, selected = 'auto', nvidiaIndex = 0) {
+    const selectedDevice = getGpuByType(type, selected);
+    if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
+        const nvidia = getNvidiaMetrics(nvidiaIndex);
 
         if (nvidia) {
             return {
                 type: 'load',
+                id: 'dgpu',
                 name: 'dGPU',
                 percent: getRoundedPercent(nvidia.usage),
                 color: LOAD_COLORS.dgpu,
@@ -417,7 +427,7 @@ function getGpuMetrics(type, previousStat = null) {
         }
     }
 
-    const device = getGpuByType(type);
+    const device = selectedDevice;
 
     if (!device)
         return null;
@@ -426,135 +436,162 @@ function getGpuMetrics(type, previousStat = null) {
     const used = readNumberFile(`${device.path}/mem_info_vram_used`);
     const total = readNumberFile(`${device.path}/mem_info_vram_total`);
     const engineStat = busy === null ? getGpuEngineStat(device) : null;
-    let engineUsage = null;
-
-    if (engineStat && previousStat) {
-        const busyDelta = engineStat.busy - previousStat.busy;
-        const timeDelta = engineStat.time - previousStat.time;
-
-        if (busyDelta >= 0 && timeDelta > 0)
-            engineUsage = busyDelta / timeDelta * 100;
-    }
-
-    const usage = used !== null && total ? used / total * 100 : (busy ?? engineUsage);
+    const engineUsage = engineStat && previousStat
+        ? Math.max(...Object.entries(engineStat.engines).map(([engine, busy]) =>
+            calculateEngineUsage(
+                {busy: previousStat.engines?.[engine] ?? busy, time: previousStat.time},
+                {busy, time: engineStat.time}
+            ) ?? 0
+        ), 0)
+        : null;
+    const usage = busy ?? engineUsage;
+    const memoryUsage = used !== null && total ? used / total * 100 : null;
 
     return {
         type: 'load',
+        id: type,
         name: type === 'igpu' ? 'iGPU' : 'dGPU',
         percent: getRoundedPercent(usage),
         color: LOAD_COLORS[type],
         engineStat,
         tooltip: [
             `${type === 'igpu' ? 'iGPU' : 'dGPU'} ${formatPercent(usage)}`,
-            total ? `${formatBytes(used)}/${formatBytes(total)}` : getGpuDisplayName(device),
+            total ? `VRAM ${formatBytes(used)}/${formatBytes(total)} (${formatPercent(memoryUsage)})` : getGpuDisplayName(device),
             total ? getGpuDisplayName(device) : '',
         ].filter(Boolean).join('\n'),
     };
 }
 
-function getNvidiaMetrics() {
+function getNvidiaMetrics(index = 0) {
     const now = GLib.get_monotonic_time() / 1000;
 
     if (now - nvidiaMetricsCache.timestamp < nvidiaMetricsCache.ttl)
-        return nvidiaMetricsCache.value;
+        return nvidiaMetricsCache.values?.[index] ?? nvidiaMetricsCache.value;
 
     // Never let polling initialize or probe a dormant NVIDIA driver. Calling
     // nvidia-smi too early can repeatedly trigger a failing modprobe on
     // unsupported or misconfigured hybrid-GPU systems.
-    const driverReady =
+    const driverBaseReady =
         GLib.file_test('/sys/module/nvidia', GLib.FileTest.IS_DIR) &&
         GLib.file_test('/dev/nvidiactl', GLib.FileTest.EXISTS) &&
-        GLib.file_test('/proc/driver/nvidia/gpus', GLib.FileTest.IS_DIR) &&
+        GLib.file_test('/proc/driver/nvidia/gpus', GLib.FileTest.IS_DIR);
+    const driverReady = driverBaseReady &&
         listDirectory('/proc/driver/nvidia/gpus').length > 0;
 
     if (!driverReady) {
-        nvidiaMetricsCache = {timestamp: now, ttl: NVIDIA_FAILURE_CACHE_MS, value: null};
+        nvidiaMetricsCache = {
+            timestamp: now,
+            ttl: driverBaseReady ? NVIDIA_METRICS_CACHE_MS : NVIDIA_FAILURE_CACHE_MS,
+            value: null,
+            pending: false,
+        };
         return null;
     }
 
-    let value = null;
-
-    try {
-        const process = Gio.Subprocess.new([
+    if (!nvidiaMetricsCache.pending) {
+        nvidiaMetricsCache.pending = true;
+        runCommandAsync([
             'nvidia-smi',
             '--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,name',
             '--format=csv,noheader,nounits',
-        ], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
-        const [, stdout] = process.communicate_utf8(null, null);
-        const fields = stdout.trim().split('\n')[0]?.split(',').map(field => field.trim());
-
-        if (process.get_successful() && fields?.length >= 5) {
-            value = {
-                usage: Number.parseInt(fields[0], 10),
-                usedMiB: Number.parseInt(fields[1], 10),
-                totalMiB: Number.parseInt(fields[2], 10),
-                temp: Number.parseInt(fields[3], 10),
-                name: fields.slice(4).join(', '),
+        ], {timeoutMs: 3000}).then(stdout => {
+            const gpus = stdout.split('\n').map(line => {
+                const fields = line.split(',').map(field => field.trim());
+                if (fields.length < 5)
+                    return null;
+                return {
+                    usage: Number.parseInt(fields[0], 10),
+                    usedMiB: Number.parseInt(fields[1], 10),
+                    totalMiB: Number.parseInt(fields[2], 10),
+                    temp: Number.parseInt(fields[3], 10),
+                    name: fields.slice(4).join(', '),
+                };
+            }).filter(Boolean);
+            nvidiaMetricsCache = {
+                timestamp: GLib.get_monotonic_time() / 1000,
+                ttl: gpus.length ? NVIDIA_METRICS_CACHE_MS : NVIDIA_FAILURE_CACHE_MS,
+                value: gpus[0] ?? null,
+                values: gpus,
+                pending: false,
             };
-        }
-    } catch (_error) {
-        value = null;
+        }).catch(() => {
+            nvidiaMetricsCache = {
+                timestamp: GLib.get_monotonic_time() / 1000,
+                ttl: NVIDIA_FAILURE_CACHE_MS,
+                value: null,
+                pending: false,
+            };
+        });
     }
-
-    nvidiaMetricsCache = {
-        timestamp: now,
-        ttl: value ? NVIDIA_METRICS_CACHE_MS : NVIDIA_FAILURE_CACHE_MS,
-        value,
-    };
-    return value;
+    return nvidiaMetricsCache.values?.[index] ?? nvidiaMetricsCache.value;
 }
 
 function getHwmonTemperature(devicePath) {
     for (const hwmon of listDirectory(`${devicePath}/hwmon`)) {
         const hwmonPath = `${devicePath}/hwmon/${hwmon}`;
-
-        for (const fileName of listDirectory(hwmonPath).filter(name => /^temp\d+_input$/.test(name))) {
-            const value = readNumberFile(`${hwmonPath}/${fileName}`);
-
-            if (value !== null)
-                return value / 1000;
+        const names = listDirectory(hwmonPath);
+        const labels = names.filter(name => /^temp\d+_label$/.test(name));
+        const preferred = labels.find(label => {
+            const value = readTextFile(`${hwmonPath}/${label}`)?.toLowerCase() ?? '';
+            return value.includes('edge') || value.includes('gpu') || value.includes('package');
+        }) ?? labels[0];
+        const inputName = preferred?.replace('_label', '_input') ??
+            names.find(name => /^temp\d+_input$/.test(name));
+        const value = inputName ? readNumberFile(`${hwmonPath}/${inputName}`) : null;
+        if (value !== null) {
+            return {
+                temp: value / 1000,
+                sensor: preferred
+                    ? readTextFile(`${hwmonPath}/${preferred}`) ?? preferred
+                    : inputName,
+            };
         }
     }
 
-    return null;
+    return {temp: null, sensor: 'unavailable'};
 }
 
-function getGpuTemperature(type) {
-    if (type === 'dgpu') {
-        const nvidia = getNvidiaMetrics();
+function getGpuTemperature(type, selected = 'auto', nvidiaIndex = 0) {
+    const selectedDevice = getGpuByType(type, selected);
+    if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
+        const nvidia = getNvidiaMetrics(nvidiaIndex);
 
         if (nvidia && !Number.isNaN(nvidia.temp))
-            return nvidia.temp;
+            return {temp: nvidia.temp, sensor: `nvidia-smi GPU ${nvidiaIndex}`};
     }
 
-    const device = getGpuByType(type);
+    const device = selectedDevice;
 
     if (!device)
-        return null;
+        return {temp: null, sensor: 'unavailable'};
 
     return getHwmonTemperature(device.path);
 }
 
-function getGpuDescription(type) {
-    if (type === 'dgpu') {
-        const nvidia = getNvidiaMetrics();
+function getGpuDescription(type, selected = 'auto', nvidiaIndex = 0) {
+    const selectedDevice = getGpuByType(type, selected);
+    if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
+        const nvidia = getNvidiaMetrics(nvidiaIndex);
         if (nvidia?.name)
             return nvidia.name;
     }
 
-    return getGpuDisplayName(getGpuByType(type)) ?? `${type === 'igpu' ? 'Integrated' : 'Dedicated'} GPU`;
+    return getGpuDisplayName(selectedDevice) ?? `${type === 'igpu' ? 'Integrated' : 'Dedicated'} GPU`;
 }
 
 function getCpuTemperature() {
     for (const hwmon of listDirectory('/sys/class/hwmon')) {
         const hwmonPath = `/sys/class/hwmon/${hwmon}`;
+        const hwmonName = readTextFile(`${hwmonPath}/name`)?.toLowerCase() ?? '';
         const labels = listDirectory(hwmonPath).filter(name => /^temp\d+_label$/.test(name));
         const preferred = labels.find(label => {
             const text = readTextFile(`${hwmonPath}/${label}`)?.toLowerCase() ?? '';
             return text.includes('package') || text.includes('tctl') || text.includes('cpu');
         });
-        const inputName = preferred?.replace('_label', '_input') ??
-            listDirectory(hwmonPath).find(name => /^temp\d+_input$/.test(name));
+        const cpuHwmon = /^(coretemp|k10temp|zenpower|acpitz|cpu_thermal)$/.test(hwmonName);
+        const inputName = preferred?.replace('_label', '_input') ?? (cpuHwmon
+            ? listDirectory(hwmonPath).find(name => /^temp\d+_input$/.test(name))
+            : null);
         const value = inputName ? readNumberFile(`${hwmonPath}/${inputName}`) : null;
 
         if (value !== null)
@@ -582,12 +619,18 @@ class SystemMetricsButton extends PanelMenu.Button {
     _init(settings, side, extensionPath) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
+        this._destroyed = false;
+        this.connect('destroy', () => {
+            this._destroyed = true;
+        });
         this._settings = settings;
         this._side = side;
         this._extensionPath = extensionPath;
         this._cpuModel = getCpuModel();
         this._previousCpuStat = parseCpuStat();
         this._previousGpuStats = new Map();
+        this._previousNetworkStat = null;
+        this._previousDiskStat = null;
         this._loadItems = [];
         this._tempItems = [];
         this._box = new St.BoxLayout({
@@ -595,37 +638,56 @@ class SystemMetricsButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._box.spacing = 12;
+        this._box.connect('destroy', () => {
+            this._box = null;
+            this._destroyed = true;
+        });
         this.add_child(this._box);
         this.menu.actor.visible = false;
         this._tooltip = new St.BoxLayout({
             style_class: 'user-topmenu-metric-tooltip',
-            style: 'background-color: #242424; border-radius: 6px; color: white; padding: 8px 10px;',
             vertical: true,
             visible: false,
             opacity: 255,
         });
         this._tooltip.spacing = 6;
+        this._tooltip.connect('destroy', () => {
+            this._tooltip = null;
+        });
         Main.uiGroup.add_child(this._tooltip);
 
         this._settings.connectObject('changed', (_settings, key) => {
-            if (LOAD_KEYS.includes(key) || key === 'use-load-colors')
+            if (key === 'network-interface')
+                this._previousNetworkStat = null;
+
+            if (LOAD_KEYS.includes(key) || key === 'loads-position') {
                 this._refreshLoads();
-
-            if (TEMP_KEYS.includes(key) || key === 'temperature-unit' ||
-                key === 'temperature-decimals' || key === 'use-temp-colors')
-                this._refreshTemps();
-
-            if (key === 'loads-position')
+                this._startLoadRefreshTimer();
+            } else if (key === 'use-load-colors' || key === 'metric-order' ||
+                key === 'igpu-device' || key === 'dgpu-device' || key === 'nvidia-index' ||
+                key === 'network-interface') {
                 this._refreshLoads();
+            }
 
-            if (key === 'temps-position')
+            if (TEMP_KEYS.includes(key) || key === 'temps-position') {
                 this._refreshTemps();
+                this._startTempRefreshTimer();
+            } else if (key === 'temperature-unit' || key === 'temperature-decimals' ||
+                key === 'use-temp-colors' || key === 'temp-warning' || key === 'temp-critical' ||
+                key === 'igpu-device' || key === 'dgpu-device' || key === 'nvidia-index' ||
+                key === 'temp-order') {
+                this._refreshTemps();
+            }
 
             if (key === 'loads-refresh-seconds')
                 this._startLoadRefreshTimer();
 
             if (key === 'temps-refresh-seconds')
                 this._startTempRefreshTimer();
+
+            if (key === 'pause-metrics-when-locked' || key === 'adaptive-refresh-on-battery' ||
+                key === 'battery-refresh-multiplier')
+                this.refreshTimerConfiguration();
         }, this);
         this._startLoadRefreshTimer();
         this._startTempRefreshTimer();
@@ -635,30 +697,49 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _startLoadRefreshTimer() {
-        if (this._loadTimeoutId)
+        if (this._loadTimeoutId) {
             GLib.Source.remove(this._loadTimeoutId);
+            this._loadTimeoutId = null;
+        }
 
-        const seconds = this._settings.get_uint('loads-refresh-seconds');
+        if (this._settings.get_string('loads-position') !== this._side ||
+            !LOAD_KEYS.some(key => this._settings.get_boolean(key)))
+            return;
+
+        const seconds = this._getEffectiveInterval('loads-refresh-seconds');
         this._loadTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-            this._refreshLoads();
+            if (this._destroyed)
+                return GLib.SOURCE_REMOVE;
+            if (this._shouldPoll())
+                this._refreshLoads();
             return GLib.SOURCE_CONTINUE;
         });
         GLib.Source.set_name_by_id(this._loadTimeoutId, `[${this.constructor.name}] loads refresh`);
     }
 
     _startTempRefreshTimer() {
-        if (this._tempTimeoutId)
+        if (this._tempTimeoutId) {
             GLib.Source.remove(this._tempTimeoutId);
+            this._tempTimeoutId = null;
+        }
 
-        const seconds = this._settings.get_uint('temps-refresh-seconds');
+        if (this._settings.get_string('temps-position') !== this._side ||
+            !TEMP_KEYS.some(key => this._settings.get_boolean(key)))
+            return;
+
+        const seconds = this._getEffectiveInterval('temps-refresh-seconds');
         this._tempTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-            this._refreshTemps();
+            if (this._destroyed)
+                return GLib.SOURCE_REMOVE;
+            if (this._shouldPoll())
+                this._refreshTemps();
             return GLib.SOURCE_CONTINUE;
         });
         GLib.Source.set_name_by_id(this._tempTimeoutId, `[${this.constructor.name}] temps refresh`);
     }
 
     destroy() {
+        this._destroyed = true;
         if (this._loadTimeoutId) {
             GLib.Source.remove(this._loadTimeoutId);
             this._loadTimeoutId = null;
@@ -672,12 +753,29 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._settings.disconnectObject(this);
 
         this._tooltip?.destroy();
-        this._tooltip = null;
 
         super.destroy();
     }
 
+    refreshTimerConfiguration() {
+        this._startLoadRefreshTimer();
+        this._startTempRefreshTimer();
+    }
+
+    _getEffectiveInterval(key) {
+        const base = this._settings.get_uint(key);
+        return this._settings.get_boolean('adaptive-refresh-on-battery') && systemOnBattery
+            ? base * this._settings.get_uint('battery-refresh-multiplier')
+            : base;
+    }
+
+    _shouldPoll() {
+        return !(this._settings.get_boolean('pause-metrics-when-locked') && Main.sessionMode.isLocked);
+    }
+
     _refreshLoads() {
+        if (this._destroyed)
+            return;
         this._loadItems = this._settings.get_string('loads-position') === this._side
             ? this._getLoadItems()
             : [];
@@ -685,6 +783,8 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _refreshTemps() {
+        if (this._destroyed)
+            return;
         this._tempItems = this._settings.get_string('temps-position') === this._side
             ? this._getTempItems()
             : [];
@@ -692,6 +792,9 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _render() {
+        if (this._destroyed || !this._box)
+            return;
+        this._hideTooltip();
         this._box.destroy_all_children();
 
         const firstGroup = this._side === 'left'
@@ -731,11 +834,17 @@ class SystemMetricsButton extends PanelMenu.Button {
             items.push(this._getSwapItem());
 
         if (this._settings.get_boolean('show-load-igpu')) {
-            const item = getGpuMetrics('igpu', this._previousGpuStats.get('igpu'));
+            const item = getGpuMetrics(
+                'igpu',
+                this._previousGpuStats.get('igpu'),
+                this._settings.get_string('igpu-device'),
+                this._settings.get_uint('nvidia-index')
+            );
             if (item?.engineStat)
                 this._previousGpuStats.set('igpu', item.engineStat);
             items.push(item ?? {
                 type: 'load',
+                id: 'igpu',
                 name: 'iGPU',
                 percent: null,
                 color: LOAD_COLORS.igpu,
@@ -744,11 +853,17 @@ class SystemMetricsButton extends PanelMenu.Button {
         }
 
         if (this._settings.get_boolean('show-load-dgpu')) {
-            const item = getGpuMetrics('dgpu', this._previousGpuStats.get('dgpu'));
+            const item = getGpuMetrics(
+                'dgpu',
+                this._previousGpuStats.get('dgpu'),
+                this._settings.get_string('dgpu-device'),
+                this._settings.get_uint('nvidia-index')
+            );
             if (item?.engineStat)
                 this._previousGpuStats.set('dgpu', item.engineStat);
             items.push(item ?? {
                 type: 'load',
+                id: 'dgpu',
                 name: 'dGPU',
                 percent: null,
                 color: LOAD_COLORS.dgpu,
@@ -756,7 +871,19 @@ class SystemMetricsButton extends PanelMenu.Button {
             });
         }
 
-        return items;
+        if (this._settings.get_boolean('show-load-network'))
+            items.push(this._getNetworkItem());
+
+        if (this._settings.get_boolean('show-load-disk'))
+            items.push(this._getDiskItem());
+
+        const order = this._settings.get_string('metric-order').split(',').map(value => value.trim());
+        return items.sort((a, b) => {
+            const aIndex = order.indexOf(a.id);
+            const bIndex = order.indexOf(b.id);
+            return (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) -
+                (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex);
+        });
     }
 
     _getTempItems() {
@@ -768,57 +895,64 @@ class SystemMetricsButton extends PanelMenu.Button {
             const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
+                id: 'cpu',
                 name: 'CPU',
                 temp,
-                color: getTempColor(temp),
+                color: this._getTempColor(temp),
                 tooltip: `CPU ${temp === null ? 'unavailable' : formatted}\n${this._cpuModel}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-igpu')) {
-            const temp = getGpuTemperature('igpu');
+            const selected = this._settings.get_string('igpu-device');
+            const info = getGpuTemperature('igpu', selected, this._settings.get_uint('nvidia-index'));
+            const temp = info.temp;
             const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
+                id: 'igpu',
                 name: 'iGPU',
                 temp,
-                color: getTempColor(temp),
-                tooltip: `iGPU ${temp === null ? 'unavailable' : formatted}\n${getGpuDescription('igpu')}`,
+                color: this._getTempColor(temp),
+                tooltip: `iGPU ${temp === null ? 'unavailable' : formatted}\nSensor: ${info.sensor}\n${getGpuDescription('igpu', selected, this._settings.get_uint('nvidia-index'))}`,
             });
         }
 
         if (this._settings.get_boolean('show-temp-dgpu')) {
-            const temp = getGpuTemperature('dgpu');
+            const selected = this._settings.get_string('dgpu-device');
+            const index = this._settings.get_uint('nvidia-index');
+            const info = getGpuTemperature('dgpu', selected, index);
+            const temp = info.temp;
             const formatted = this._formatTemperature(temp);
             items.push({
                 type: 'temp',
+                id: 'dgpu',
                 name: 'dGPU',
                 temp,
-                color: getTempColor(temp),
-                tooltip: `dGPU ${temp === null ? 'unavailable' : formatted}\n${getGpuDescription('dgpu')}`,
+                color: this._getTempColor(temp),
+                tooltip: `dGPU ${temp === null ? 'unavailable' : formatted}\nSensor: ${info.sensor}\n${getGpuDescription('dgpu', selected, index)}`,
             });
         }
 
-        return items;
+        const order = this._settings.get_string('temp-order').split(',').map(value => value.trim());
+        return items.sort((a, b) => {
+            const aIndex = order.indexOf(a.id);
+            const bIndex = order.indexOf(b.id);
+            return (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) -
+                (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex);
+        });
     }
 
     _getCpuLoadItem() {
         const current = parseCpuStat();
-        let percent = null;
-
-        if (current && this._previousCpuStat) {
-            const totalDelta = current.total - this._previousCpuStat.total;
-            const idleDelta = current.idle - this._previousCpuStat.idle;
-
-            if (totalDelta > 0)
-                percent = (1 - idleDelta / totalDelta) * 100;
-        }
+        const percent = calculateCpuUsage(this._previousCpuStat, current);
 
         if (current)
             this._previousCpuStat = current;
 
         return {
             type: 'load',
+            id: 'cpu',
             name: 'CPU',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.cpu,
@@ -830,11 +964,11 @@ class SystemMetricsButton extends PanelMenu.Button {
         const meminfo = parseMeminfo();
         const total = meminfo.MemTotal ?? 0;
         const available = meminfo.MemAvailable ?? 0;
-        const used = Math.max(total - available, 0);
-        const percent = total ? used / total * 100 : null;
+        const {used, percent} = calculateMemoryUsage(total, available);
 
         return {
             type: 'load',
+            id: 'mem',
             name: 'MEM',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.mem,
@@ -846,11 +980,11 @@ class SystemMetricsButton extends PanelMenu.Button {
         const meminfo = parseMeminfo();
         const total = meminfo.SwapTotal ?? 0;
         const free = meminfo.SwapFree ?? 0;
-        const used = Math.max(total - free, 0);
-        const percent = total ? used / total * 100 : null;
+        const {used, percent} = calculateMemoryUsage(total, free);
 
         return {
             type: 'load',
+            id: 'swap',
             name: 'SWAP',
             percent: getRoundedPercent(percent),
             color: LOAD_COLORS.swap,
@@ -858,10 +992,64 @@ class SystemMetricsButton extends PanelMenu.Button {
         };
     }
 
+    _getNetworkItem() {
+        const selected = this._settings.get_string('network-interface');
+        const interfaces = listDirectory('/sys/class/net');
+        const ignored = selected === 'auto'
+            ? interfaces.filter(name => name === 'lo' ||
+                !GLib.file_test(`/sys/class/net/${name}/device`, GLib.FileTest.EXISTS))
+            : interfaces.filter(name => name !== selected);
+        const counters = parseProcNetDev(readTextFile('/proc/net/dev'), ignored);
+        const now = GLib.get_monotonic_time();
+        let rxRate = 0;
+        let txRate = 0;
+        if (this._previousNetworkStat) {
+            const seconds = (now - this._previousNetworkStat.time) / 1_000_000;
+            if (seconds > 0) {
+                rxRate = Math.max(0, counters.rx - this._previousNetworkStat.rx) / seconds;
+                txRate = Math.max(0, counters.tx - this._previousNetworkStat.tx) / seconds;
+            }
+        }
+        this._previousNetworkStat = {...counters, time: now};
+        return {
+            type: 'rate',
+            id: 'network',
+            name: 'NET',
+            value: `↓${formatBinaryBytes(rxRate, 1)}/s`,
+            color: LOAD_COLORS.network,
+            tooltip: `Network throughput (${selected === 'auto' ? 'physical interfaces' : selected})\nDownload ${formatBinaryBytes(rxRate, 1)}/s\nUpload ${formatBinaryBytes(txRate, 1)}/s`,
+        };
+    }
+
+    _getDiskItem() {
+        const counters = parseProcDiskstats(readTextFile('/proc/diskstats'));
+        const now = GLib.get_monotonic_time();
+        let readRate = 0;
+        let writeRate = 0;
+        if (this._previousDiskStat) {
+            const seconds = (now - this._previousDiskStat.time) / 1_000_000;
+            if (seconds > 0) {
+                readRate = Math.max(0, counters.readBytes - this._previousDiskStat.readBytes) / seconds;
+                writeRate = Math.max(0, counters.writeBytes - this._previousDiskStat.writeBytes) / seconds;
+            }
+        }
+        this._previousDiskStat = {...counters, time: now};
+        return {
+            type: 'rate',
+            id: 'disk',
+            name: 'DISK',
+            value: `R ${formatBinaryBytes(readRate, 1)}/s`,
+            color: LOAD_COLORS.disk,
+            tooltip: `Disk activity\nRead ${formatBinaryBytes(readRate, 1)}/s\nWrite ${formatBinaryBytes(writeRate, 1)}/s`,
+        };
+    }
+
     _createMetricLabel(item) {
         const actor = item.type === 'temp'
             ? this._createTempMetric(item)
-            : this._createLoadMetric(item);
+            : item.type === 'rate'
+                ? this._createRateMetric(item)
+                : this._createLoadMetric(item);
 
         actor.connectObject(
             'enter-event', () => {
@@ -869,6 +1057,24 @@ class SystemMetricsButton extends PanelMenu.Button {
             },
             'leave-event', () => {
                 this._hideTooltip();
+            },
+            'key-focus-in', () => {
+                this._showTooltip(actor, item);
+            },
+            'key-focus-out', () => {
+                this._hideTooltip();
+            },
+            'button-press-event', () => {
+                this._activateMetricAction();
+                return Clutter.EVENT_STOP;
+            },
+            'key-press-event', (_actor, event) => {
+                const symbol = event.get_key_symbol();
+                if (symbol === Clutter.KEY_Return || symbol === Clutter.KEY_space) {
+                    this._activateMetricAction();
+                    return Clutter.EVENT_STOP;
+                }
+                return Clutter.EVENT_PROPAGATE;
             },
             this
         );
@@ -879,7 +1085,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         const metric = new St.BoxLayout({
             style_class: 'user-topmenu-load-metric',
             reactive: true,
-            style: 'margin-left: 5px; margin-right: 5px;',
+            can_focus: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
         metric.spacing = 5;
@@ -900,7 +1106,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (qualifier) {
             iconBox.add_child(new St.Label({
                 text: qualifier,
-                style: `color: ${this._getMetricColor(item)}; font-size: 8px; font-weight: bold;`,
+                style_class: 'user-topmenu-load-qualifier',
+                style: `color: ${this._getMetricColor(item)};`,
                 y_align: Clutter.ActorAlign.CENTER,
             }));
         }
@@ -918,7 +1125,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         const spacer = new St.Widget();
         spacer.set_size(9, 18 - fillHeight);
         const fill = new St.Widget({
-            style: `background-color: ${this._getMetricColor(item)}; border-radius: 2px;`,
+            style_class: 'user-topmenu-load-fill',
+            style: `background-color: ${this._getMetricColor(item)};`,
         });
         fill.set_size(9, fillHeight);
         column.add_child(spacer);
@@ -961,7 +1169,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         const box = new St.BoxLayout({
             style_class: 'user-topmenu-temp-column',
             reactive: true,
-            style: 'margin-left: 5px; margin-right: 5px;',
+            can_focus: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
         box.spacing = 5;
@@ -985,6 +1193,29 @@ class SystemMetricsButton extends PanelMenu.Button {
         return box;
     }
 
+    _createRateMetric(item) {
+        const box = new St.BoxLayout({
+            style_class: 'user-topmenu-rate-metric',
+            reactive: true,
+            can_focus: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        box.spacing = 4;
+        box.add_child(new St.Icon({
+            gicon: this._getMetricIcon(item.id),
+            style: `color: ${this._getMetricColor(item)};`,
+            icon_size: 13,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        box.add_child(new St.Label({
+            text: item.value,
+            style: `color: ${this._getMetricColor(item)};`,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        box.accessible_name = `${item.name} ${item.value}`;
+        return box;
+    }
+
     _formatTemperature(temp) {
         return formatTemperature(
             temp,
@@ -993,8 +1224,17 @@ class SystemMetricsButton extends PanelMenu.Button {
         );
     }
 
+    _getTempColor(temp) {
+        return getTemperatureColor(
+            temp,
+            this._settings.get_uint('temp-warning'),
+            this._settings.get_uint('temp-critical')
+        );
+    }
+
     _getMetricColor(item) {
-        if (item.type === 'load' && !this._settings.get_boolean('use-load-colors'))
+        if ((item.type === 'load' || item.type === 'rate') &&
+            !this._settings.get_boolean('use-load-colors'))
             return DEFAULT_METRIC_COLOR;
 
         if (item.type === 'temp' && !this._settings.get_boolean('use-temp-colors'))
@@ -1033,7 +1273,8 @@ class SystemMetricsButton extends PanelMenu.Button {
             });
             bar.set_width(barWidth);
             const fill = new St.Widget({
-                style: `background-color: ${this._getMetricColor(item)}; border-radius: 3px;`,
+                style_class: 'user-topmenu-tooltip-bar-fill',
+                style: `background-color: ${this._getMetricColor(item)};`,
             });
             const empty = new St.Widget({
                 style_class: 'user-topmenu-tooltip-bar-empty',
@@ -1077,6 +1318,16 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (this._tooltip)
             this._tooltip.visible = false;
     }
+
+    _activateMetricAction() {
+        if (this._settings.get_string('metrics-click-action') !== 'system-monitor')
+            return;
+
+        const appSystem = Shell.AppSystem.get_default();
+        const app = appSystem.lookup_app('org.gnome.SystemMonitor.desktop') ??
+            appSystem.lookup_app('gnome-system-monitor.desktop');
+        app?.activate();
+    }
 });
 
 const UserQuickToggle = GObject.registerClass(
@@ -1095,69 +1346,28 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         this.menu.setHeader('avatar-default-symbolic', extension._getDisplayName(), null);
 
-        this._keepAwakeItem = addSettingsSwitch(this.menu, 'Keep awake', this._settings, 'keep-awake', this);
+        this._keepAwakeControls = addKeepAwakeControls(this.menu, this._settings, this);
+        this._keepAwakeItem = this._keepAwakeControls.manual;
 
-        this._displaySubmenu = new PopupMenu.PopupSubMenuMenuItem('Display');
-        this.menu.addMenuItem(this._displaySubmenu);
-
-        this._showHostnameItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Show computer name', this._settings, 'show-hostname', this);
-        this._showUsernameItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Display username', this._settings, 'show-username', this);
-        this._showAvatarItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Display avatar', this._settings, 'show-avatar', this);
-
-        this._desktopSubmenu = new PopupMenu.PopupSubMenuMenuItem('Desktop');
-        this.menu.addMenuItem(this._desktopSubmenu);
-
-        this._primaryPasteItem = addSettingsSwitch(
-            this._desktopSubmenu.menu, 'Enable primary paste',
-            this._desktopInterfaceSettings, 'gtk-enable-primary-paste', this);
-        this._touchpadMiddleClickItem = addCustomSwitch(
-            this._desktopSubmenu.menu,
-            'Three-finger middle click',
-            this._touchpadSettings.get_string('tap-button-map') === 'lrm',
-            this,
-            state => {
-                this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
-            });
-
-        this._behaviorSubmenu = new PopupMenu.PopupSubMenuMenuItem('Extension');
-        this.menu.addMenuItem(this._behaviorSubmenu);
-
-        this._showQuickSettingsItem = addSettingsSwitch(
-            this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
-
-        this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
-        this.menu.addMenuItem(this._autohideSubmenu);
-
-        this._hideFullscreenItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide in fullscreen', this._settings, 'hide-topbar-fullscreen', this);
-        this._hideFullscreenAllMonitorsItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Fullscreen on all monitors',
-            this._settings, 'hide-topbar-fullscreen-all-monitors', this);
-        this._hideMaximizedItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide when maximized', this._settings, 'hide-topbar-maximized', this);
-        this._hideTouchingItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide when touching top bar', this._settings, 'hide-topbar-touching', this);
+        Object.assign(this, addSharedMenuSections(this, this.menu, false));
 
         this._desktopInterfaceSettings.connectObject('changed::gtk-enable-primary-paste', () => {
-            this._syncDesktopState();
+            syncSharedMenuSections(this);
         }, this);
         this._touchpadSettings.connectObject('changed::tap-button-map', () => {
-            this._syncDesktopState();
+            syncSharedMenuSections(this);
         }, this);
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addAction('Open Preferences', () => {
+        this.menu.addAction(translate('Open Preferences'), () => {
             this._extension.openPreferences().catch(error => {
                 console.error(`Failed to open preferences: ${error.message}`);
             });
         });
-        this.menu.addAction('Lock Screen', () => {
+        this.menu.addAction(translate('Lock Screen'), () => {
             SystemActions.getDefault().activateLockScreen();
         });
-        this.menu.addAction('Log Out', () => {
+        this.menu.addAction(translate('Log Out'), () => {
             SystemActions.getDefault().activateLogout();
         });
 
@@ -1174,15 +1384,7 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
     sync() {
         const keepAwake = this._settings.get_boolean('keep-awake');
-        const showHostname = this._settings.get_boolean('show-hostname');
-        const showUsername = this._settings.get_boolean('show-username');
-        const showAvatar = this._settings.get_boolean('show-avatar');
         const showTopBar = this._settings.get_boolean('show-topbar');
-        const showQuickSettings = this._settings.get_boolean('show-quick-settings');
-        const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
-        const hideFullscreenAllMonitors = this._settings.get_boolean('hide-topbar-fullscreen-all-monitors');
-        const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
-        const hideTouching = this._settings.get_boolean('hide-topbar-touching');
         const displayName = this._extension._getDisplayName();
 
         this.title = displayName;
@@ -1197,32 +1399,9 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         if (this._keepAwakeItem.state !== keepAwake)
             this._keepAwakeItem.setToggleState(keepAwake);
+        syncKeepAwakeControls(this._keepAwakeControls, this._settings);
 
-        if (this._showHostnameItem.state !== showHostname)
-            this._showHostnameItem.setToggleState(showHostname);
-
-        if (this._showUsernameItem.state !== showUsername)
-            this._showUsernameItem.setToggleState(showUsername);
-
-        if (this._showAvatarItem.state !== showAvatar)
-            this._showAvatarItem.setToggleState(showAvatar);
-
-        if (this._showQuickSettingsItem.state !== showQuickSettings)
-            this._showQuickSettingsItem.setToggleState(showQuickSettings);
-
-        this._syncDesktopState();
-
-        if (this._hideFullscreenItem.state !== hideFullscreen)
-            this._hideFullscreenItem.setToggleState(hideFullscreen);
-
-        if (this._hideFullscreenAllMonitorsItem.state !== hideFullscreenAllMonitors)
-            this._hideFullscreenAllMonitorsItem.setToggleState(hideFullscreenAllMonitors);
-
-        if (this._hideMaximizedItem.state !== hideMaximized)
-            this._hideMaximizedItem.setToggleState(hideMaximized);
-
-        if (this._hideTouchingItem.state !== hideTouching)
-            this._hideTouchingItem.setToggleState(hideTouching);
+        syncSharedMenuSections(this);
     }
 
     destroy() {
@@ -1241,16 +1420,6 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
         this._switchItems = [];
     }
 
-    _syncDesktopState() {
-        const primaryPaste = this._desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
-        const touchpadMiddleClick = this._touchpadSettings.get_string('tap-button-map') === 'lrm';
-
-        if (this._primaryPasteItem.state !== primaryPaste)
-            this._primaryPasteItem.setToggleState(primaryPaste);
-
-        if (this._touchpadMiddleClickItem.state !== touchpadMiddleClick)
-            this._touchpadMiddleClickItem.setToggleState(touchpadMiddleClick);
-    }
 });
 
 const UserQuickIndicator = GObject.registerClass(
@@ -1333,7 +1502,6 @@ class UserTopMenuButton extends PanelMenu.Button {
             icon_name: 'view-fullscreen-symbolic',
             style_class: 'user-topmenu-autohide-icon',
             icon_size: 12,
-            style: 'color: #6cc4ff;',
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -1342,7 +1510,6 @@ class UserTopMenuButton extends PanelMenu.Button {
             icon_name: 'weather-clear-symbolic',
             style_class: 'user-topmenu-state-icon',
             icon_size: 12,
-            style: 'color: #f6b73c;',
             visible: false,
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -1368,62 +1535,19 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        this._keepAwakeItem = addSettingsSwitch(this.menu, 'Keep awake', this._settings, 'keep-awake', this);
+        this._keepAwakeControls = addKeepAwakeControls(this.menu, this._settings, this);
+        this._keepAwakeItem = this._keepAwakeControls.manual;
 
-        this._displaySubmenu = new PopupMenu.PopupSubMenuMenuItem('Display');
-        this.menu.addMenuItem(this._displaySubmenu);
-
-        this._showTopBarItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Show in top bar', this._settings, 'show-topbar', this);
-        this._showHostnameItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Show computer name', this._settings, 'show-hostname', this);
-        this._showUsernameItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Display username', this._settings, 'show-username', this);
-        this._showAvatarItem = addSettingsSwitch(
-            this._displaySubmenu.menu, 'Display avatar', this._settings, 'show-avatar', this);
-
-        this._desktopSubmenu = new PopupMenu.PopupSubMenuMenuItem('Desktop');
-        this.menu.addMenuItem(this._desktopSubmenu);
-
-        this._primaryPasteItem = addSettingsSwitch(
-            this._desktopSubmenu.menu, 'Enable primary paste',
-            this._desktopInterfaceSettings, 'gtk-enable-primary-paste', this);
-        this._touchpadMiddleClickItem = addCustomSwitch(
-            this._desktopSubmenu.menu,
-            'Three-finger middle click',
-            this._touchpadSettings.get_string('tap-button-map') === 'lrm',
-            this,
-            state => {
-                this._touchpadSettings.set_string('tap-button-map', state ? 'lrm' : 'default');
-            });
-
-        this._behaviorSubmenu = new PopupMenu.PopupSubMenuMenuItem('Extension');
-        this.menu.addMenuItem(this._behaviorSubmenu);
-
-        this._showQuickSettingsItem = addSettingsSwitch(
-            this._behaviorSubmenu.menu, 'Show in quick settings', this._settings, 'show-quick-settings', this);
-
-        this._autohideSubmenu = new PopupMenu.PopupSubMenuMenuItem('Autohide');
-        this.menu.addMenuItem(this._autohideSubmenu);
-
-        this._hideFullscreenItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide in fullscreen', this._settings, 'hide-topbar-fullscreen', this);
-        this._hideFullscreenAllMonitorsItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Fullscreen on all monitors',
-            this._settings, 'hide-topbar-fullscreen-all-monitors', this);
-        this._hideMaximizedItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide when maximized', this._settings, 'hide-topbar-maximized', this);
-        this._hideTouchingItem = addSettingsSwitch(
-            this._autohideSubmenu.menu, 'Hide when touching top bar', this._settings, 'hide-topbar-touching', this);
+        Object.assign(this, addSharedMenuSections(this, this.menu, true));
 
         this._desktopInterfaceSettings.connectObject('changed::gtk-enable-primary-paste', () => {
-            this._syncDesktopState();
+            syncSharedMenuSections(this);
         }, this);
         this._touchpadSettings.connectObject('changed::tap-button-map', () => {
-            this._syncDesktopState();
+            syncSharedMenuSections(this);
         }, this);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addAction('Lock Screen', () => {
+        this.menu.addAction(translate('Lock Screen'), () => {
             SystemActions.getDefault().activateLockScreen();
         });
 
@@ -1431,7 +1555,9 @@ class UserTopMenuButton extends PanelMenu.Button {
             if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar')
                 this._refreshLabel();
 
-            if (key === 'keep-awake')
+            if (key === 'keep-awake' || key === 'keep-awake-fullscreen' ||
+                key === 'keep-awake-media' || key === 'keep-awake-timer-active' ||
+                key === 'keep-awake-timer-deadline')
                 this._syncKeepAwakeState();
 
             if (key === 'show-topbar')
@@ -1450,29 +1576,30 @@ class UserTopMenuButton extends PanelMenu.Button {
         this._syncTopBarState();
         this._syncShowQuickSettingsState();
         this._syncAutohideState();
-        this._syncDesktopState();
+        syncSharedMenuSections(this);
     }
 
     _createAvatarActor(userName) {
         const avatarPath = `/var/lib/AccountsService/icons/${userName}`;
-
-        if (GLib.file_test(avatarPath, GLib.FileTest.EXISTS)) {
-            return new St.Icon({
+        const icon = GLib.file_test(avatarPath, GLib.FileTest.EXISTS)
+            ? new St.Icon({
                 gicon: new Gio.FileIcon({file: Gio.File.new_for_path(avatarPath)}),
                 icon_size: AVATAR_SIZE,
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,
-            });
-        }
-
-        return new St.Bin({
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-            child: new St.Icon({
+            })
+            : new St.Icon({
                 gicon: new Gio.ThemedIcon({name: 'avatar-default-symbolic'}),
                 icon_size: AVATAR_SIZE,
                 y_align: Clutter.ActorAlign.CENTER,
-            }),
+            });
+
+        return new St.Bin({
+            style_class: 'user-topmenu-avatar',
+            clip_to_allocation: true,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+            child: icon,
         });
     }
 
@@ -1507,7 +1634,8 @@ class UserTopMenuButton extends PanelMenu.Button {
         const hasLeadingText = showUsername;
         const hasHostnameText = showHostname;
 
-        this._avatarFrame.visible = showAvatar;
+        const showFallbackAvatar = !showAvatar && !showUsername && !showHostname;
+        this._avatarFrame.visible = showAvatar || showFallbackAvatar;
         this._avatarLabelSpacer.visible = showAvatar && (showUsername || showHostname);
         this._label.visible = showUsername;
         this._label.set_text(displayName);
@@ -1541,6 +1669,7 @@ class UserTopMenuButton extends PanelMenu.Button {
 
         if (this._keepAwakeItem.state !== keepAwake)
             this._keepAwakeItem.setToggleState(keepAwake);
+        syncKeepAwakeControls(this._keepAwakeControls, this._settings);
 
         this._keepAwakeItem.label.remove_style_pseudo_class('active');
         if (keepAwake)
@@ -1553,59 +1682,31 @@ class UserTopMenuButton extends PanelMenu.Button {
     }
 
     _syncTopBarState() {
-        const showTopBar = this._settings.get_boolean('show-topbar');
-
-        if (this._showTopBarItem.state !== showTopBar)
-            this._showTopBarItem.setToggleState(showTopBar);
+        syncSharedMenuSections(this);
     }
 
     _syncShowQuickSettingsState() {
-        const showQuickSettings = this._settings.get_boolean('show-quick-settings');
-
-        if (this._showQuickSettingsItem.state !== showQuickSettings)
-            this._showQuickSettingsItem.setToggleState(showQuickSettings);
-    }
-
-    _syncDesktopState() {
-        const primaryPaste = this._desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
-        const touchpadMiddleClick = this._touchpadSettings.get_string('tap-button-map') === 'lrm';
-
-        if (this._primaryPasteItem.state !== primaryPaste)
-            this._primaryPasteItem.setToggleState(primaryPaste);
-
-        if (this._touchpadMiddleClickItem.state !== touchpadMiddleClick)
-            this._touchpadMiddleClickItem.setToggleState(touchpadMiddleClick);
+        syncSharedMenuSections(this);
     }
 
     _isAutohideEnabled() {
         return this._settings.get_boolean('hide-topbar-fullscreen') ||
-            this._settings.get_boolean('hide-topbar-fullscreen-all-monitors') ||
             this._settings.get_boolean('hide-topbar-maximized') ||
             this._settings.get_boolean('hide-topbar-touching');
     }
 
     _syncAutohideState() {
         const hideFullscreen = this._settings.get_boolean('hide-topbar-fullscreen');
-        const hideFullscreenAllMonitors = this._settings.get_boolean('hide-topbar-fullscreen-all-monitors');
         const hideMaximized = this._settings.get_boolean('hide-topbar-maximized');
         const hideTouching = this._settings.get_boolean('hide-topbar-touching');
-        const autohideEnabled = hideFullscreen || hideFullscreenAllMonitors || hideMaximized || hideTouching;
+        const autohideEnabled = hideFullscreen || hideMaximized || hideTouching;
 
         this._fullscreenIcon.visible = autohideEnabled;
-        this._stateIconsBox.visible = autohideEnabled || this._settings.get_boolean('keep-awake');
+        this._stateIconsBox.visible = autohideEnabled ||
+            (this._keepAwakeEffective ?? this._settings.get_boolean('keep-awake'));
         this._hostnameStateSpacer.visible = this._stateIconsBox.visible;
 
-        if (this._hideFullscreenItem.state !== hideFullscreen)
-            this._hideFullscreenItem.setToggleState(hideFullscreen);
-
-        if (this._hideFullscreenAllMonitorsItem.state !== hideFullscreenAllMonitors)
-            this._hideFullscreenAllMonitorsItem.setToggleState(hideFullscreenAllMonitors);
-
-        if (this._hideMaximizedItem.state !== hideMaximized)
-            this._hideMaximizedItem.setToggleState(hideMaximized);
-
-        if (this._hideTouchingItem.state !== hideTouching)
-            this._hideTouchingItem.setToggleState(hideTouching);
+        syncSharedMenuSections(this);
     }
 
     destroy() {
@@ -1631,32 +1732,41 @@ export default class UsernameAvatarExtension extends Extension {
         if (this._settings)
             return;
 
+        configureMenuTranslation(this.gettext.bind(this));
         this._settings = this.getSettings();
+        this._enabled = true;
+        this._cancellable = new Gio.Cancellable();
         this._mediaPlaying = false;
-        this._resetKeepAwakeTimer();
+        this._restoreKeepAwakeTimer();
         this._settings.connectObject('changed', (_settings, key) => {
             if (key === 'keep-awake' || key === 'keep-awake-fullscreen' ||
                 key === 'keep-awake-media')
                 this._syncInhibitor();
 
             if (key === 'keep-awake-timer-active' || key === 'keep-awake-timer-minutes') {
-                this._resetKeepAwakeTimer();
+                this._resetKeepAwakeTimer(key === 'keep-awake-timer-minutes');
                 this._syncInhibitor();
             }
 
-            if (key === 'place-after-navigation')
+            if (key === 'place-after-navigation') {
                 this._rebuildButton();
+                this._addMetricsButtons();
+            }
 
             if (key === 'show-hostname' || key === 'show-username' || key === 'show-avatar' ||
                 key === 'keep-awake' || key === 'show-topbar' || key === 'show-quick-settings' ||
+                key === 'keep-awake-fullscreen' || key === 'keep-awake-media' ||
+                key === 'keep-awake-timer-active' || key === 'keep-awake-timer-deadline' ||
                 key === 'hide-topbar-fullscreen' || key === 'hide-topbar-fullscreen-all-monitors' ||
                 key === 'hide-topbar-maximized' || key === 'hide-topbar-touching' ||
                 LOAD_KEYS.includes(key) || TEMP_KEYS.includes(key) ||
                 key === 'loads-position' || key === 'temps-position')
                 this._refreshQuickSettingsMenu();
 
-            if (key === 'show-topbar')
+            if (key === 'show-topbar') {
                 this._rebuildButton();
+                this._addMetricsButtons();
+            }
 
             if (key === 'show-quick-settings') {
                 this._removeQuickSettingsMenu();
@@ -1676,7 +1786,16 @@ export default class UsernameAvatarExtension extends Extension {
             this._syncFullscreenPanelVisibility();
             this._syncInhibitor();
         }, this);
+        Main.layoutManager.connectObject('monitors-changed', () => {
+            if (this._panelRevealActor) {
+                this._destroyPanelRevealActor();
+                this._ensurePanelRevealActor();
+            }
+            this._syncFullscreenPanelVisibility();
+        }, this);
         this._startKeepAwakeRefreshTimer();
+        this._setupPowerMonitor();
+        this._startUserMonitors();
 
         this._trackFocusWindow();
         this._rebuildButton();
@@ -1688,9 +1807,12 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     disable() {
+        this._enabled = false;
+        this._cancellable?.cancel();
         this._disconnectFocusWindowSignals();
         this._settings?.disconnectObject(this);
         global.display.disconnectObject(this);
+        Main.layoutManager.disconnectObject(this);
 
         if (this._keepAwakeTimeoutId) {
             GLib.Source.remove(this._keepAwakeTimeoutId);
@@ -1698,12 +1820,22 @@ export default class UsernameAvatarExtension extends Extension {
         }
 
         this._releaseInhibitor();
+        this._destroyPanelRevealActor();
         this._setPanelAutohide(false);
         this._removeMetricsButtons();
         this._removeQuickSettingsMenu();
         this._button?.destroy();
         this._button = null;
         this._settings = null;
+        this._cancellable = null;
+        this._powerProxy?.disconnectObject(this);
+        this._powerProxy = null;
+        this._stopUserMonitors();
+        textFileCache.clear();
+        directoryCache.clear();
+        gpuNameCache.clear();
+        memoryHardwareCache = {timestamp: 0, value: null, pending: false};
+        nvidiaMetricsCache = {timestamp: 0, ttl: 0, value: null, pending: false};
     }
 
     _startKeepAwakeRefreshTimer() {
@@ -1738,10 +1870,77 @@ export default class UsernameAvatarExtension extends Extension {
     _addMetricsButtons() {
         this._removeMetricsButtons();
 
+        if (!this._settings.get_boolean('show-topbar'))
+            return;
+
         this._leftMetrics = new SystemMetricsButton(this._settings, 'left', this.path);
         this._rightMetrics = new SystemMetricsButton(this._settings, 'right', this.path);
         Main.panel.addToStatusArea(`${this.uuid}-metrics-left`, this._leftMetrics, this._getPanelPosition() + 1, 'left');
         Main.panel.addToStatusArea(`${this.uuid}-metrics-right`, this._rightMetrics, 0, 'right');
+    }
+
+    _setupPowerMonitor() {
+        Gio.DBusProxy.new_for_bus(
+            Gio.BusType.SYSTEM,
+            Gio.DBusProxyFlags.NONE,
+            null,
+            'org.freedesktop.UPower',
+            '/org/freedesktop/UPower',
+            'org.freedesktop.UPower',
+            this._cancellable,
+            (source, result) => {
+                if (!this._enabled)
+                    return;
+                try {
+                    this._powerProxy = Gio.DBusProxy.new_for_bus_finish(result);
+                    const sync = () => {
+                        systemOnBattery = this._powerProxy.get_cached_property('OnBattery')?.unpack() ?? false;
+                        this._leftMetrics?.refreshTimerConfiguration();
+                        this._rightMetrics?.refreshTimerConfiguration();
+                    };
+                    this._powerProxy.connectObject('g-properties-changed', sync, this);
+                    sync();
+                } catch (_error) {
+                    systemOnBattery = false;
+                }
+            }
+        );
+    }
+
+    _startUserMonitors() {
+        this._stopUserMonitors();
+        const userName = GLib.get_user_name();
+        const directories = [
+            '/var/lib/AccountsService/icons',
+            '/var/lib/AccountsService/users',
+        ];
+        this._userMonitors = [];
+        for (const path of directories) {
+            try {
+                const monitor = Gio.File.new_for_path(path).monitor_directory(
+                    Gio.FileMonitorFlags.NONE,
+                    this._cancellable
+                );
+                monitor.connectObject('changed', (_monitor, file) => {
+                    if (this._enabled && file?.get_basename() === userName) {
+                        this._rebuildButton();
+                        this._removeQuickSettingsMenu();
+                        this._addQuickSettingsMenu();
+                    }
+                }, this);
+                this._userMonitors.push(monitor);
+            } catch (_error) {
+                // AccountsService files may not exist until an avatar is set.
+            }
+        }
+    }
+
+    _stopUserMonitors() {
+        for (const monitor of this._userMonitors ?? []) {
+            monitor.disconnectObject(this);
+            monitor.cancel();
+        }
+        this._userMonitors = [];
     }
 
     _removeMetricsButtons() {
@@ -1786,41 +1985,83 @@ export default class UsernameAvatarExtension extends Extension {
         return manual || fullscreen || media || timer;
     }
 
-    _refreshAutomaticKeepAwake() {
-        if (!this._settings)
+    async _refreshAutomaticKeepAwake() {
+        if (!this._settings || this._automaticRefreshPending)
             return;
 
-        this._mediaPlaying = this._settings.get_boolean('keep-awake-media') && isMediaPlaying();
+        this._automaticRefreshPending = true;
+        try {
+            const watchMedia = this._settings.get_boolean('keep-awake-media');
+            this._mediaPlaying = watchMedia
+                ? await isMediaPlaying(this._cancellable)
+                : false;
 
-        if (this._settings.get_boolean('keep-awake-timer-active') &&
-            !this._isKeepAwakeTimerActive())
-            this._settings.set_boolean('keep-awake-timer-active', false);
+            if (!this._enabled || !this._settings)
+                return;
 
-        this._syncInhibitor();
+            if (this._settings.get_boolean('keep-awake-timer-active') &&
+                !this._isKeepAwakeTimerActive())
+                this._settings.set_boolean('keep-awake-timer-active', false);
+
+            this._syncInhibitor();
+            this._refreshQuickSettingsMenu();
+        } finally {
+            this._automaticRefreshPending = false;
+        }
     }
 
-    _resetKeepAwakeTimer() {
-        if (!this._settings?.get_boolean('keep-awake-timer-active')) {
-            this._keepAwakeTimerDeadline = null;
+    _restoreKeepAwakeTimer() {
+        if (!this._settings.get_boolean('keep-awake-timer-active')) {
+            this._settings.set_int64('keep-awake-timer-deadline', 0);
             return;
         }
 
+        const deadline = this._settings.get_int64('keep-awake-timer-deadline');
+        if (timerIsActive(true, deadline, GLib.get_real_time()))
+            return;
+
+        if (deadline > 0) {
+            this._settings.set_boolean('keep-awake-timer-active', false);
+            this._settings.set_int64('keep-awake-timer-deadline', 0);
+        } else {
+            this._resetKeepAwakeTimer(true);
+        }
+    }
+
+    _resetKeepAwakeTimer(forceRestart = false) {
+        if (!this._settings?.get_boolean('keep-awake-timer-active')) {
+            if (this._settings?.get_int64('keep-awake-timer-deadline') !== 0)
+                this._settings?.set_int64('keep-awake-timer-deadline', 0);
+            return;
+        }
+
+        const current = this._settings.get_int64('keep-awake-timer-deadline');
+        if (!forceRestart && timerIsActive(true, current, GLib.get_real_time()))
+            return;
+
         const duration = this._settings.get_uint('keep-awake-timer-minutes') * 60 * 1000000;
-        this._keepAwakeTimerDeadline = GLib.get_monotonic_time() + duration;
+        this._settings.set_int64('keep-awake-timer-deadline', GLib.get_real_time() + duration);
     }
 
     _isKeepAwakeTimerActive() {
-        return this._settings?.get_boolean('keep-awake-timer-active') &&
-            this._keepAwakeTimerDeadline !== null &&
-            GLib.get_monotonic_time() < this._keepAwakeTimerDeadline;
+        return timerIsActive(
+            this._settings?.get_boolean('keep-awake-timer-active'),
+            this._settings?.get_int64('keep-awake-timer-deadline') ?? 0,
+            GLib.get_real_time()
+        );
     }
 
-    _inhibitIdle() {
-        if (this._inhibitCookie)
+    async _inhibitIdle() {
+        if (this._inhibitCookie || this._inhibitPending)
             return;
 
+        if ((this._inhibitRetryAt ?? 0) > GLib.get_monotonic_time())
+            return;
+
+        this._inhibitPending = true;
         try {
-            const result = Gio.DBus.session.call_sync(
+            const result = await dbusCallAsync(
+                Gio.DBus.session,
                 'org.gnome.SessionManager',
                 '/org/gnome/SessionManager',
                 'org.gnome.SessionManager',
@@ -1832,36 +2073,44 @@ export default class UsernameAvatarExtension extends Extension {
                     INHIBIT_IDLE_FLAG,
                 ]),
                 new GLib.VariantType('(u)'),
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
+                3000
             );
             this._inhibitCookie = result.recursiveUnpack()[0];
+            if (!this._enabled || !this._settings || !this._shouldKeepAwake())
+                this._releaseInhibitor();
         } catch (error) {
-            console.error(`Failed to inhibit idle: ${error.message}`);
+            if (error.message.includes('org.freedesktop.DBus.Error.ServiceUnknown'))
+                console.debug(`SessionManager unavailable; keep-awake deferred: ${error.message}`);
+            else
+                console.error(`Failed to inhibit idle: ${error.message}`);
+            this._inhibitRetryAt = GLib.get_monotonic_time() + 60 * 1_000_000;
+        } finally {
+            this._inhibitPending = false;
         }
     }
 
-    _releaseInhibitor() {
-        if (!this._inhibitCookie)
+    async _releaseInhibitor() {
+        if (!this._inhibitCookie || this._uninhibitPending)
             return;
 
+        const cookie = this._inhibitCookie;
+        this._inhibitCookie = null;
+        this._uninhibitPending = true;
         try {
-            Gio.DBus.session.call_sync(
+            await dbusCallAsync(
+                Gio.DBus.session,
                 'org.gnome.SessionManager',
                 '/org/gnome/SessionManager',
                 'org.gnome.SessionManager',
                 'Uninhibit',
-                new GLib.Variant('(u)', [this._inhibitCookie]),
+                new GLib.Variant('(u)', [cookie]),
                 null,
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
+                3000
             );
         } catch (error) {
             console.error(`Failed to release idle inhibitor: ${error.message}`);
         } finally {
-            this._inhibitCookie = null;
+            this._uninhibitPending = false;
         }
     }
 
@@ -1869,39 +2118,6 @@ export default class UsernameAvatarExtension extends Extension {
         const realName = GLib.get_real_name();
         const userName = GLib.get_user_name();
         return realName && realName !== 'Unknown' ? realName : userName;
-    }
-
-    _isFocusWindowFullscreen() {
-        if (!this._focusWindow?.fullscreen)
-            return false;
-
-        if (this._settings?.get_boolean('hide-topbar-fullscreen-all-monitors'))
-            return true;
-
-        return this._isFocusWindowOnPrimaryMonitor();
-    }
-
-    _isFocusWindowMaximized() {
-        return this._isFocusWindowOnPrimaryMonitor() &&
-            (this._focusWindow?.is_maximized() ?? false);
-    }
-
-    _isFocusWindowTouchingTopBar() {
-        if (!this._focusWindow || !this._isFocusWindowOnPrimaryMonitor())
-            return false;
-
-        const frameRect = this._focusWindow.get_frame_rect?.();
-        if (!frameRect)
-            return false;
-
-        return frameRect.y <= Main.layoutManager.panelBox.height;
-    }
-
-    _isFocusWindowOnPrimaryMonitor() {
-        if (!this._focusWindow)
-            return false;
-
-        return this._focusWindow.get_monitor?.() === global.display.get_primary_monitor();
     }
 
     _trackFocusWindow() {
@@ -1941,13 +2157,27 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _syncFullscreenPanelVisibility() {
-        const hideFullscreen = this._settings?.get_boolean('hide-topbar-fullscreen');
-        const hideMaximized = this._settings?.get_boolean('hide-topbar-maximized');
-        const hideTouching = this._settings?.get_boolean('hide-topbar-touching');
-        const shouldHide =
-            (hideFullscreen && this._isFocusWindowFullscreen()) ||
-            (hideMaximized && this._isFocusWindowMaximized()) ||
-            (hideTouching && this._isFocusWindowTouchingTopBar());
+        const primary = Main.layoutManager.primaryMonitor;
+        if (!primary || !Main.layoutManager.panelBox) {
+            this._setPanelAutohide(false);
+            return;
+        }
+        const frameRect = this._focusWindow?.get_frame_rect?.();
+        const shouldHide = shouldHidePanel({
+            fullscreen: this._settings?.get_boolean('hide-topbar-fullscreen'),
+            fullscreenAllMonitors: this._settings?.get_boolean('hide-topbar-fullscreen-all-monitors'),
+            maximized: this._settings?.get_boolean('hide-topbar-maximized'),
+            touching: this._settings?.get_boolean('hide-topbar-touching'),
+        }, this._focusWindow ? {
+            fullscreen: Boolean(this._focusWindow.fullscreen),
+            maximized: this._focusWindow.is_maximized?.() ?? false,
+            monitor: this._focusWindow.get_monitor?.(),
+            y: frameRect?.y ?? Number.MAX_SAFE_INTEGER,
+        } : null, {
+            index: global.display.get_primary_monitor(),
+            y: primary.y,
+            panelHeight: Main.layoutManager.panelBox.height,
+        });
 
         this._setPanelAutohide(shouldHide);
     }
@@ -1959,14 +2189,38 @@ export default class UsernameAvatarExtension extends Extension {
             return;
 
         if (hidden) {
-            if (!this._panelUntracked) {
-                Main.layoutManager.untrackChrome(panelBox);
-                this._panelUntracked = true;
+            if (this._panelAutohideActive) {
+                if (!this._panelTemporarilyRevealed)
+                    return;
+                this._panelTemporarilyRevealed = false;
+            } else {
+                if (!panelBox.visible)
+                    return;
+                this._panelAutohideActive = true;
+                if (!this._panelUntracked) {
+                    Main.layoutManager.untrackChrome(panelBox);
+                    this._panelUntracked = true;
+                }
             }
 
-            panelBox.visible = false;
+            this._ensurePanelRevealActor();
+            panelBox.ease({
+                translation_y: -panelBox.height,
+                duration: 180,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
         } else {
-            panelBox.visible = true;
+            if (!this._panelAutohideActive && !this._panelUntracked)
+                return;
+
+            this._panelAutohideActive = false;
+            this._panelTemporarilyRevealed = false;
+            panelBox.ease({
+                translation_y: 0,
+                duration: 150,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+            this._destroyPanelRevealActor();
 
             if (this._panelUntracked) {
                 Main.layoutManager.trackChrome(panelBox, {affectsStruts: true});
@@ -1974,7 +2228,53 @@ export default class UsernameAvatarExtension extends Extension {
             }
         }
 
-        Main.layoutManager._queueUpdateRegions?.();
+    }
+
+    _ensurePanelRevealActor() {
+        if (this._panelRevealActor)
+            return;
+
+        const monitor = Main.layoutManager.primaryMonitor;
+        if (!monitor)
+            return;
+        this._panelRevealActor = new St.Widget({
+            reactive: true,
+            track_hover: true,
+            style_class: 'user-topmenu-panel-reveal-edge',
+        });
+        this._panelRevealActor.set_position(monitor.x, monitor.y);
+        this._panelRevealActor.set_size(monitor.width, 3);
+        this._panelRevealActor.connectObject('enter-event', () => {
+            const panelBox = Main.layoutManager.panelBox;
+            this._panelTemporarilyRevealed = true;
+            panelBox.ease({
+                translation_y: 0,
+                duration: 150,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+            if (this._panelRevealTimeoutId)
+                GLib.Source.remove(this._panelRevealTimeoutId);
+            this._panelRevealTimeoutId = GLib.timeout_add(
+                GLib.PRIORITY_DEFAULT,
+                1800,
+                () => {
+                    this._panelRevealTimeoutId = null;
+                    this._syncFullscreenPanelVisibility();
+                    return GLib.SOURCE_REMOVE;
+                }
+            );
+        }, this);
+        Main.uiGroup.add_child(this._panelRevealActor);
+    }
+
+    _destroyPanelRevealActor() {
+        if (this._panelRevealTimeoutId) {
+            GLib.Source.remove(this._panelRevealTimeoutId);
+            this._panelRevealTimeoutId = null;
+        }
+        this._panelRevealActor?.disconnectObject(this);
+        this._panelRevealActor?.destroy();
+        this._panelRevealActor = null;
     }
 
     _addQuickSettingsMenu() {
