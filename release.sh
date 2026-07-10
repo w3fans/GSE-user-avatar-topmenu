@@ -7,11 +7,12 @@ cd "$repo_root"
 
 if [[ "$mode" == "-h" || "$mode" == "--help" ]]; then
     cat <<'EOF'
-Usage: ./release.sh [patch|beta|stable|major|vX.Y.Z]
+Usage: ./release.sh [patch|minor|beta|stable|major|vX.Y.Z]
 
 patch   Increment the patch number on the current release line.
+minor   Start the next even minor (stable) release line.
 beta    Start the next odd minor release line.
-stable  Start the next even minor release line.
+stable  Alias for minor.
 major   Start the next major release line.
 vX.Y.Z  Deliberate recovery override.
 
@@ -52,7 +53,7 @@ beta)
     (( next_minor % 2 == 1 )) || next_minor=$((next_minor + 1))
     next="${major}.${next_minor}.0"
     ;;
-stable)
+minor|stable)
     next_minor=$((minor + 1))
     (( next_minor % 2 == 0 )) || next_minor=$((next_minor + 1))
     next="${major}.${next_minor}.0"

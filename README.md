@@ -79,10 +79,13 @@ Release modes:
 
 ```bash
 ./release.sh patch
+./release.sh minor
 ./release.sh beta
-./release.sh stable
 ./release.sh major
 ```
+
+`minor` automatically advances to the next even minor stable line. `stable`
+remains available as an alias; `beta` advances to the next odd minor line.
 
 `release.sh` will:
 
