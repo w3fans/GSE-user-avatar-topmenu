@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.2
+
+- Replaced the unavailable Diagnostics tab icon with a clearly visible standard Adwaita symbolic icon
+
 ## 0.8.1
 
 - Reduced release ZIP size with maximum deflate compression while preserving readable, reviewable source

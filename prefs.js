@@ -386,7 +386,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
 
         const diagnosticsPage = new Adw.PreferencesPage({
             title: _('Diagnostics'),
-            icon_name: 'utilities-system-monitor-symbolic',
+            icon_name: 'preferences-system-symbolic',
         });
         const diagnosticsGroup = new Adw.PreferencesGroup({
             title: 'Detected Hardware',
