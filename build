@@ -26,7 +26,7 @@ while IFS= read -r file; do
     printf '%s\n' "$file" >> "$manifest"
 done < package-files.txt
 
-zip -q "$bundle" -@ < "$manifest"
+7z a -tzip -mx=9 -mfb=258 -mpass=15 "$bundle" "@$manifest" >/dev/null
 cp "$bundle" "$versioned"
 
 contents="$(unzip -Z1 "$bundle")"

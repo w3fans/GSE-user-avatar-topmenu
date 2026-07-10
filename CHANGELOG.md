@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1
+
+- Reduced release ZIP size with maximum deflate compression while preserving readable, reviewable source
+- Made personal companion SHA-256 files portable by recording the ZIP basename instead of a `dist/` path
+
 ## 0.8.0
 
 - Promoted the complete `0.7.x` beta feature set to the next even-minor stable release line

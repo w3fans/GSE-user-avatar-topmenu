@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install validation and packaging tools
-        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils zip
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils p7zip-full
 
       - name: Read extension metadata
         id: meta
@@ -40,7 +40,7 @@ jobs:
             mkdir -p dist
             cp "$bundled" "dist/$bundled"
             unzip -p "$bundled" extension.js | grep -F "['sudo', '-n', 'dmidecode', '--type', '17']"
-            sha256sum "dist/$bundled" > "dist/${bundled%.zip}.sha256"
+            (cd dist && sha256sum "$bundled" > "${bundled%.zip}.sha256")
           else
             chmod +x build validate.sh
             ./build

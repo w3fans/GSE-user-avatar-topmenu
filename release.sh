@@ -23,7 +23,7 @@ EOF
     exit 0
 fi
 
-for command in git node zip unzip curl xgettext; do
+for command in git node 7z unzip curl xgettext; do
     command -v "$command" >/dev/null || {
         echo "$command is required" >&2
         exit 1

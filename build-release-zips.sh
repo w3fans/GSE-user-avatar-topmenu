@@ -58,8 +58,11 @@ PY
       cp "dist/${uuid}-${tag}.shell-extension.sha256" "${repo_root}/dist/${uuid}-${tag}.shell-extension.sha256"
     else
       cp "${uuid}.shell-extension.zip" "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip"
-      sha256sum "${repo_root}/dist/${uuid}-${tag}.shell-extension.zip" \
-        > "${repo_root}/dist/${uuid}-${tag}.shell-extension.sha256"
+      (
+        cd "${repo_root}/dist"
+        sha256sum "${uuid}-${tag}.shell-extension.zip" \
+          > "${uuid}-${tag}.shell-extension.sha256"
+      )
     fi
     printf '%s\n' "$uuid" > .built-uuid
   )
