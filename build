@@ -43,5 +43,8 @@ if grep -Eq '(^|/)(\.codex|dist|screenshots?)(/|$)|gschemas\.compiled|(^|/)(buil
     exit 1
 fi
 
-sha256sum "$versioned" > "${versioned%.zip}.sha256"
+(
+    cd dist
+    sha256sum "$(basename "$versioned")" > "$(basename "${versioned%.zip}.sha256")"
+)
 echo "Built $versioned"

@@ -133,7 +133,9 @@ wait_for_release_asset() {
     local asset="${uuid}-${release_tag}.shell-extension.zip"
     local url="https://api.github.com/repos/w3fans/GSE-user-avatar-topmenu/releases/tags/${release_tag}"
     for _attempt in $(seq 1 30); do
-        if curl --fail --silent "$url" | grep -Fq "$asset"; then
+        local payload=""
+        payload="$(curl --fail --silent "$url" || true)"
+        if grep -Fq "$asset" <<< "$payload"; then
             return 0
         fi
         sleep 10

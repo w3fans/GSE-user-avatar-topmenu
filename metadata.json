@@ -5,7 +5,7 @@
   "settings-schema": "org.gnome.shell.extensions.username-avatar",
   "gettext-domain": "user-avatar-topmenu",
   "url": "https://github.com/w3fans/GSE-user-avatar-topmenu",
-  "version": 74,
+  "version": 75,
   "shell-version": [
     "45",
     "46",

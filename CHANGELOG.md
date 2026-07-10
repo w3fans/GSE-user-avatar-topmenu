@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1
+
+- Made published SHA-256 files portable by recording the release ZIP basename instead of a local `dist/` path
+- Fixed release-asset polling under `pipefail` so a successful GitHub response is not mistaken for a failed `curl`
+
 ## 0.7.0
 
 - Reworked hardware polling around bounded asynchronous subprocess and DBus operations so metrics and media checks no longer block GNOME Shell
