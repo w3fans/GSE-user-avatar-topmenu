@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.3
+
+- Added exact-model Gigabyte G6 KF keyboard controls, timed full-fan tests, and CPU/dGPU fan telemetry to the private `su` companion only
+- Kept the public EGO extension privilege-free and excluded unvalidated Gigabyte G5 hardware from the private control allowlist
+
 ## 0.8.2
 
 - Replaced the unavailable Diagnostics tab icon with a clearly visible standard Adwaita symbolic icon
