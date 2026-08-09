@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.4
+
+- Fixed the Quick Settings Preferences action on GNOME Shell 50, where the API
+  returns no Promise
+- Added an exact-model Gigabyte G5/G6 Hardware Preferences page, cyan keyboard
+  backlight controls, live fan status, firmware-auto recovery, and bounded
+  full-speed tests to the private `su` companion only
+- Kept every privileged hardware helper and UI module out of the public EGO ZIP
+
 ## 0.8.3
 
 - Added exact-model Gigabyte G6 KF keyboard controls, timed full-fan tests, and CPU/dGPU fan telemetry to the private `su` companion only

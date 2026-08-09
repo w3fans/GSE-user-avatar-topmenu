@@ -1360,9 +1360,11 @@ class UserQuickToggle extends QuickSettings.QuickMenuToggle {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addAction(translate('Open Preferences'), () => {
-            this._extension.openPreferences().catch(error => {
+            try {
+                this._extension.openPreferences();
+            } catch (error) {
                 console.error(`Failed to open preferences: ${error.message}`);
-            });
+            }
         });
         this.menu.addAction(translate('Lock Screen'), () => {
             SystemActions.getDefault().activateLockScreen();
