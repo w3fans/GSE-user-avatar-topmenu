@@ -12,7 +12,7 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {dbusCallAsync, runCommandAsync} from './lib/io.js';
+import {cancelPendingCommands, dbusCallAsync, runCommandAsync} from './lib/io.js';
 import {
     addKeepAwakeControls,
     addSharedMenuSections,
@@ -1736,7 +1736,6 @@ export default class UsernameAvatarExtension extends Extension {
 
         configureMenuTranslation(this.gettext.bind(this));
         this._settings = this.getSettings();
-        this._enabled = true;
         this._cancellable = new Gio.Cancellable();
         this._mediaPlaying = false;
         this._restoreKeepAwakeTimer();
@@ -1809,8 +1808,8 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     disable() {
-        this._enabled = false;
         this._cancellable?.cancel();
+        cancelPendingCommands();
         this._disconnectFocusWindowSignals();
         this._settings?.disconnectObject(this);
         global.display.disconnectObject(this);
@@ -1891,7 +1890,7 @@ export default class UsernameAvatarExtension extends Extension {
             'org.freedesktop.UPower',
             this._cancellable,
             (source, result) => {
-                if (!this._enabled)
+                if (!this._settings)
                     return;
                 try {
                     this._powerProxy = Gio.DBusProxy.new_for_bus_finish(result);
@@ -1924,7 +1923,7 @@ export default class UsernameAvatarExtension extends Extension {
                     this._cancellable
                 );
                 monitor.connectObject('changed', (_monitor, file) => {
-                    if (this._enabled && file?.get_basename() === userName) {
+                    if (file?.get_basename() === userName) {
                         this._rebuildButton();
                         this._removeQuickSettingsMenu();
                         this._addQuickSettingsMenu();
@@ -1998,7 +1997,7 @@ export default class UsernameAvatarExtension extends Extension {
                 ? await isMediaPlaying(this._cancellable)
                 : false;
 
-            if (!this._enabled || !this._settings)
+            if (!this._settings)
                 return;
 
             if (this._settings.get_boolean('keep-awake-timer-active') &&
@@ -2078,7 +2077,7 @@ export default class UsernameAvatarExtension extends Extension {
                 3000
             );
             this._inhibitCookie = result.recursiveUnpack()[0];
-            if (!this._enabled || !this._settings || !this._shouldKeepAwake())
+            if (!this._settings || !this._shouldKeepAwake())
                 this._releaseInhibitor();
         } catch (error) {
             if (error.message.includes('org.freedesktop.DBus.Error.ServiceUnknown'))

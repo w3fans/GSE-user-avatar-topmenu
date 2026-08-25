@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+
+- Removed the extension lifecycle boolean in favor of nulled resource state
+- Explicitly cancel pending subprocesses and remove their timeout sources when
+  the extension is disabled
+
 ## 0.8.4
 
 - Fixed the Quick Settings Preferences action on GNOME Shell 50, where the API
