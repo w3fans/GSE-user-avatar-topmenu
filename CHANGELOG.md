@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.7
+
+- Fixed SU startup on GNOME 51 by obtaining the keyboard idle monitor from the backend API
+- Skip idle monitor initialization when supported keyboard hardware or its helper is absent
+
 ## 0.8.6
 
 - Added Fedora 45 / GNOME Shell 51 compatibility while retaining Shell 45–50 support
