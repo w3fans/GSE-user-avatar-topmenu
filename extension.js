@@ -619,10 +619,6 @@ class SystemMetricsButton extends PanelMenu.Button {
     _init(settings, side, extensionPath) {
         super._init(0.0, `Username Avatar ${side} Metrics`, false);
 
-        this._destroyed = false;
-        this.connect('destroy', () => {
-            this._destroyed = true;
-        });
         this._settings = settings;
         this._side = side;
         this._extensionPath = extensionPath;
@@ -640,13 +636,12 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._box.spacing = 12;
         this._box.connect('destroy', () => {
             this._box = null;
-            this._destroyed = true;
         });
         this.add_child(this._box);
         this.menu.actor.visible = false;
         this._tooltip = new St.BoxLayout({
             style_class: 'user-topmenu-metric-tooltip',
-            vertical: true,
+            ...(Clutter.Orientation ? {orientation: Clutter.Orientation.VERTICAL} : {vertical: true}),
             visible: false,
             opacity: 255,
         });
@@ -708,8 +703,6 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         const seconds = this._getEffectiveInterval('loads-refresh-seconds');
         this._loadTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-            if (this._destroyed)
-                return GLib.SOURCE_REMOVE;
             if (this._shouldPoll())
                 this._refreshLoads();
             return GLib.SOURCE_CONTINUE;
@@ -729,8 +722,6 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         const seconds = this._getEffectiveInterval('temps-refresh-seconds');
         this._tempTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
-            if (this._destroyed)
-                return GLib.SOURCE_REMOVE;
             if (this._shouldPoll())
                 this._refreshTemps();
             return GLib.SOURCE_CONTINUE;
@@ -739,7 +730,6 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     destroy() {
-        this._destroyed = true;
         if (this._loadTimeoutId) {
             GLib.Source.remove(this._loadTimeoutId);
             this._loadTimeoutId = null;
@@ -774,7 +764,7 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _refreshLoads() {
-        if (this._destroyed)
+        if (!this._box)
             return;
         this._loadItems = this._settings.get_string('loads-position') === this._side
             ? this._getLoadItems()
@@ -783,7 +773,7 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _refreshTemps() {
-        if (this._destroyed)
+        if (!this._box)
             return;
         this._tempItems = this._settings.get_string('temps-position') === this._side
             ? this._getTempItems()
@@ -792,7 +782,7 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _render() {
-        if (this._destroyed || !this._box)
+        if (!this._box)
             return;
         this._hideTooltip();
         this._box.destroy_all_children();
@@ -1114,7 +1104,7 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         const column = new St.BoxLayout({
             style_class: 'user-topmenu-load-column',
-            vertical: true,
+            ...(Clutter.Orientation ? {orientation: Clutter.Orientation.VERTICAL} : {vertical: true}),
             y_align: Clutter.ActorAlign.CENTER,
         });
         column.set_size(9, 18);

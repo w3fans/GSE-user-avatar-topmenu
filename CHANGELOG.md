@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.6
+
+- Added Fedora 45 / GNOME Shell 51 compatibility while retaining Shell 45–50 support
+- Updated vertical metric layouts for the GNOME 51 orientation API and removed the remaining metrics destruction flag
+- Added configurable keyboard backlight inactivity presets with keyboard, touchpad, and mouse wake-up in the private SU companion
+
 ## 0.8.5
 
 - Removed the extension lifecycle boolean in favor of nulled resource state

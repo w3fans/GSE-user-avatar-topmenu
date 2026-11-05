@@ -5,6 +5,10 @@ It can also show the computer name, hardware-style system usage and temperature 
 
 ## Features
 
+Supports GNOME Shell 45–51, including Fedora 45's GNOME 51. The private SU
+companion also offers keyboard backlight inactivity presets in Hardware
+Preferences; keyboard, touchpad, or mouse activity restores the previous preset.
+
 - Show avatar and display name in the left side of the top bar
 - Circular avatar styling inspired by the login screen
 - Optionally show the hostname with a computer icon

@@ -26,7 +26,7 @@ interaction, real fullscreen/maximize transitions, GPU counters, temperatures,
 or the visual panel layout.
 
 Before an EGO upload, manually test the following on every available supported
-GNOME version (45 through 50):
+GNOME version (45 through 51):
 
 1. Enable, disable, reload, and log in with the extension enabled.
 2. Open Preferences and every page; reset defaults.
@@ -38,6 +38,12 @@ GNOME version (45 through 50):
 6. Enable each available metric, hover and keyboard-focus it, verify values
    against system tools, select alternate devices, and test battery/lock polling.
 7. Inspect the Shell journal for errors during operation and shutdown.
+
+For the private SU companion, test Hardware → keyboard inactivity: select a
+15-second timeout, verify blanking, then restore using a key and touchpad
+movement. Verify Never, manual Off, changing the timeout while blanked, and
+disable while blanked. These controls require the installed model-specific
+helper and its existing sudo policy. Mouse activity also restores the light.
 
 `ego-check.sh` automates reviewer-safety and package-content preflight. The EGO
 upload itself remains manual because it requires the maintainer's authenticated
