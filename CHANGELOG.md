@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.8
+
+- Made SU keyboard backlight inactivity independent of Keep Awake and application idle inhibitors
+- Retained keyboard, touchpad, and mouse wake-up, with timer cleanup on disable
+
 ## 0.8.7
 
 - Fixed SU startup on GNOME 51 by obtaining the keyboard idle monitor from the backend API
