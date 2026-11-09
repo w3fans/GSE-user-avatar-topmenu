@@ -92,7 +92,7 @@ po/update-pot.sh
 ./build
 
 git add \
-    .github/workflows/release.yml \
+    .github/workflows/release.yml .github/workflows/ci.yml \
     CHANGELOG.md README.md TESTING.md VERSION metadata.json extension.js prefs.js stylesheet.css \
     schemas package-files.txt package.json lib po tests \
     build validate.sh ego-check.sh build-release-zips.sh release.sh tools/release-notes.mjs \

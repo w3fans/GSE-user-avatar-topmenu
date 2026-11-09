@@ -1,0 +1,16 @@
+name: Validate extension
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install checkers
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils p7zip-full ripgrep
+      - name: Validate and check public package
+        run: ./ego-check.sh
