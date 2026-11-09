@@ -9,6 +9,15 @@ Supports GNOME Shell 45–51, including Fedora 45's GNOME 51. The private SU
 companion also offers keyboard backlight inactivity presets in Hardware
 Preferences; keyboard, touchpad, or mouse activity restores the previous preset.
 
+The **SU companion is publicly downloadable**, despite the historical “private”
+name. It is an unsupported personal variant for exact-model Gigabyte G5 GD and
+G6 KF hardware and privileged RAM inventory. It requires separately installed
+helpers and narrowly scoped sudo rules. Submit only the ordinary public ZIP to
+GNOME Extensions. SU-only controls never enter that package.
+
+GNOME 51 has local runtime coverage. Support for 45–50 remains declared, but a
+complete physical compatibility matrix has not been run.
+
 - Show avatar and display name in the left side of the top bar
 - Circular avatar styling inspired by the login screen
 - Optionally show the hostname with a computer icon

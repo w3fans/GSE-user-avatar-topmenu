@@ -33,6 +33,7 @@ import {
     parseProcNetDev,
     parseDmiMemory,
     shouldHidePanel,
+    verticalLayoutProperties,
     timerIsActive,
 } from './lib/logic.js';
 
@@ -641,7 +642,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         this.menu.actor.visible = false;
         this._tooltip = new St.BoxLayout({
             style_class: 'user-topmenu-metric-tooltip',
-            ...(Clutter.Orientation ? {orientation: Clutter.Orientation.VERTICAL} : {vertical: true}),
+            ...verticalLayoutProperties(St.BoxLayout.prototype, Clutter.Orientation.VERTICAL),
             visible: false,
             opacity: 255,
         });
@@ -1104,7 +1105,7 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         const column = new St.BoxLayout({
             style_class: 'user-topmenu-load-column',
-            ...(Clutter.Orientation ? {orientation: Clutter.Orientation.VERTICAL} : {vertical: true}),
+            ...verticalLayoutProperties(St.BoxLayout.prototype, Clutter.Orientation.VERTICAL),
             y_align: Clutter.ActorAlign.CENTER,
         });
         column.set_size(9, 18);
@@ -1822,6 +1823,7 @@ export default class UsernameAvatarExtension extends Extension {
         this._powerProxy?.disconnectObject(this);
         this._powerProxy = null;
         this._stopUserMonitors();
+        configureMenuTranslation(null);
         textFileCache.clear();
         directoryCache.clear();
         gpuNameCache.clear();

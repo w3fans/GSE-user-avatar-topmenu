@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: user-avatar-topmenu 0.8.8\n"
+"Project-Id-Version: user-avatar-topmenu 0.8.9\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-05 18:52+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -17,15 +17,15 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:1352
+#: extension.js:1353
 msgid "Open Preferences"
 msgstr ""
 
-#: extension.js:1359 extension.js:1542
+#: extension.js:1360 extension.js:1543
 msgid "Lock Screen"
 msgstr ""
 
-#: extension.js:1362
+#: extension.js:1363
 msgid "Log Out"
 msgstr ""
 
@@ -134,7 +134,7 @@ msgstr ""
 msgid "Hide when touching top bar"
 msgstr ""
 
-#: po/source-strings.js:4 prefs.js:422
+#: po/source-strings.js:4 prefs.js:423
 msgid "About"
 msgstr ""
 
@@ -668,6 +668,6 @@ msgstr ""
 msgid "Diagnostics"
 msgstr ""
 
-#: prefs.js:560
+#: prefs.js:561
 msgid "Automatic is recommended unless the wrong GPU is shown."
 msgstr ""

@@ -411,7 +411,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         resetButton.connect('clicked', () => {
             for (const key of settings.list_keys())
-                settings.reset(key);
+                if (key !== 'touchpad-previous-map')
+                    settings.reset(key);
         });
         resetRow.add_suffix(resetButton);
         resetRow.activatable_widget = resetButton;

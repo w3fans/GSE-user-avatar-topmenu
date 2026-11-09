@@ -23,7 +23,7 @@ EOF
     exit 0
 fi
 
-for command in git node 7z unzip curl xgettext; do
+for command in git node 7z unzip curl xgettext rg; do
     command -v "$command" >/dev/null || {
         echo "$command is required" >&2
         exit 1
@@ -95,7 +95,7 @@ git add \
     .github/workflows/release.yml \
     CHANGELOG.md README.md TESTING.md VERSION metadata.json extension.js prefs.js stylesheet.css \
     schemas package-files.txt package.json lib po tests \
-    build validate.sh ego-check.sh build-release-zips.sh release.sh \
+    build validate.sh ego-check.sh build-release-zips.sh release.sh tools/release-notes.mjs \
     metric-*-symbolic.svg
 git commit -m "Release ${tag}"
 
@@ -125,7 +125,7 @@ git worktree add --detach "$worktree" HEAD
     git add extension.js VERSION
     git add -f "${uuid}-${su_tag}.shell-extension.zip"
     git commit -m "Release ${su_tag}"
-    git tag -a "$su_tag" -m "Release ${su_tag}"
+    git tag -a "$su_tag" -m "$(node tools/release-notes.mjs "$su_tag")"
     GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$su_tag"
 )
 
@@ -154,7 +154,7 @@ if [[ -n "$previous_su" ]]; then
     git tag -d "$previous_su"
 fi
 
-git tag -a "$tag" -m "Release ${tag}"
+git tag -a "$tag" -m "$(node tools/release-notes.mjs "$tag")"
 GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin main
 GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$tag"
 wait_for_release_asset "$tag"

@@ -6,8 +6,9 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_root"
 git rev-parse --is-inside-work-tree >/dev/null
-repo_root="$(pwd)"
 
 mkdir -p "${repo_root}/dist"
 

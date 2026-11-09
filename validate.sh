@@ -4,6 +4,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$repo_root"
 
+for command in node glib-compile-schemas bash git xmllint rg; do
+    command -v "$command" >/dev/null || { echo "Required checker missing: $command" >&2; exit 1; }
+done
+
 node --check extension.js
 node --check prefs.js
 for file in lib/*.js; do
@@ -32,7 +36,7 @@ if [[ -d tests ]]; then
 fi
 
 if rg -n "disableExtension|Util\.spawn|sudo|pkexec|gnome-extensions|gschemas\.compiled" \
-    extension.js prefs.js schemas; then
+    extension.js prefs.js lib schemas; then
     echo "Public runtime contains a forbidden review pattern" >&2
     exit 1
 fi

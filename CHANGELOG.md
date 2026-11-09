@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.9
+
+- SU: fade keyboard backlight to zero over two seconds after inactivity; input cancels dimming and restores the original brightness
+- Fixed GNOME 45–47 layout compatibility by detecting the BoxLayout property instead of the Clutter enum
+- Publish written changelog notes for every release, identify SU assets as public personal builds, and mark SU releases as prereleases
+- Fixed manual release dispatch, added push/PR validation, made required checkers fail closed, and fixed rebuilding tags from outside the repository
+- Preserve the saved touchpad mapping across Reset to Defaults and clear the menu translation reference on disable
+
 ## 0.8.8
 
 - Made SU keyboard backlight inactivity independent of Keep Awake and application idle inhibitors

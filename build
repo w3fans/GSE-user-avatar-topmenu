@@ -30,6 +30,10 @@ done < package-files.txt
 cp "$bundle" "$versioned"
 
 contents="$(unzip -Z1 "$bundle")"
+diff -u <(sort "$manifest") <(printf '%s\n' "$contents" | sort) || {
+    echo "Public ZIP contents differ from the package manifest" >&2
+    exit 1
+}
 while IFS= read -r required; do
     [[ -z "$required" || "$required" == \#* ]] && continue
     grep -Fxq "$required" <<< "$contents" || {

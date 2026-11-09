@@ -12,8 +12,15 @@ import {
     parseProcNetDev,
     parseDmiMemory,
     shouldHidePanel,
+    verticalLayoutProperties,
     timerIsActive,
 } from '../lib/logic.js';
+
+test('selects the supported BoxLayout property even when old Shell has the Clutter enum', () => {
+    assert.deepEqual(verticalLayoutProperties({vertical: false}, 1), {vertical: true});
+    assert.deepEqual(verticalLayoutProperties({orientation: 0, vertical: false}, 1), {orientation: 1});
+    assert.deepEqual(verticalLayoutProperties({orientation: 0}, 1), {orientation: 1});
+});
 
 test('calculates CPU usage from deltas', () => {
     assert.equal(calculateCpuUsage({idle: 100, total: 200}, {idle: 125, total: 300}), 75);
