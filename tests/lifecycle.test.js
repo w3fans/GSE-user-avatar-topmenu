@@ -78,3 +78,17 @@ test('autohide preserves chrome ownership and restores original translation and 
     assert.equal(panel.translation_y, 9);
     assert.equal(panel.visible, true);
 });
+
+test('invalid NVIDIA index never falls through to a different DRM GPU', () => {
+    const source = fs.readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
+    for (const [name, next, expected] of [
+        ['getGpuTemperature', 'getGpuDescription', {temp: null, sensor: 'NVIDIA GPU 7 unavailable'}],
+        ['getGpuDescription', 'getCpuTemperature', 'NVIDIA GPU 7 unavailable'],
+    ]) {
+        const method = source.slice(source.indexOf(`function ${name}(`), source.indexOf(`function ${next}(`));
+        const fn = new Function('getGpuByType', 'getNvidiaMetrics', 'getHwmonTemperature', 'getGpuDisplayName',
+            `${method}\nreturn ${name};`)(() => ({vendor: '0x10de', path: '/gpu0'}), () => null,
+            () => {throw Error('wrong GPU fallback');}, () => {throw Error('wrong GPU description');});
+        assert.deepEqual(fn('dgpu', 'auto', 7), expected);
+    }
+});

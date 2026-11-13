@@ -17,15 +17,15 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:1441
+#: extension.js:1448
 msgid "Open Preferences"
 msgstr ""
 
-#: extension.js:1448 extension.js:1631
+#: extension.js:1455 extension.js:1638
 msgid "Lock Screen"
 msgstr ""
 
-#: extension.js:1451
+#: extension.js:1458
 msgid "Log Out"
 msgstr ""
 
@@ -33,7 +33,7 @@ msgstr ""
 msgid "Keep awake"
 msgstr ""
 
-#: lib/menu.js:56 po/source-strings.js:8
+#: lib/menu.js:56 prefs.js:296
 msgid "Automatic for fullscreen apps"
 msgstr ""
 
@@ -78,7 +78,7 @@ msgstr ""
 msgid "Display"
 msgstr ""
 
-#: lib/menu.js:115 po/source-strings.js:104
+#: lib/menu.js:115 prefs.js:76
 msgid "Show in top bar"
 msgstr ""
 
@@ -86,11 +86,11 @@ msgstr ""
 msgid "Show computer name"
 msgstr ""
 
-#: lib/menu.js:120 po/source-strings.js:43
+#: lib/menu.js:120 prefs.js:40
 msgid "Display name"
 msgstr ""
 
-#: lib/menu.js:122 po/source-strings.js:42
+#: lib/menu.js:122 prefs.js:52
 msgid "Display avatar"
 msgstr ""
 
@@ -98,11 +98,11 @@ msgstr ""
 msgid "Desktop"
 msgstr ""
 
-#: lib/menu.js:127 po/source-strings.js:47
+#: lib/menu.js:127 prefs.js:117
 msgid "Enable primary paste"
 msgstr ""
 
-#: lib/menu.js:130 po/source-strings.js:128
+#: lib/menu.js:130 prefs.js:130
 msgid "Three-finger middle click"
 msgstr ""
 
@@ -110,7 +110,7 @@ msgstr ""
 msgid "Extension"
 msgstr ""
 
-#: lib/menu.js:137 po/source-strings.js:103
+#: lib/menu.js:137 prefs.js:88
 msgid "Show in quick settings"
 msgstr ""
 
@@ -118,550 +118,107 @@ msgstr ""
 msgid "Autohide"
 msgstr ""
 
-#: lib/menu.js:143 po/source-strings.js:52
+#: lib/menu.js:143 prefs.js:328
 msgid "Hide in fullscreen"
 msgstr ""
 
-#: lib/menu.js:146 po/source-strings.js:48
+#: lib/menu.js:146 prefs.js:338
 msgid "Fullscreen on all monitors"
 msgstr ""
 
-#: lib/menu.js:149 po/source-strings.js:56
+#: lib/menu.js:149 prefs.js:352
 msgid "Hide when maximized"
 msgstr ""
 
-#: lib/menu.js:152 po/source-strings.js:57
+#: lib/menu.js:152 prefs.js:362
 msgid "Hide when touching top bar"
 msgstr ""
 
-#: po/source-strings.js:4 prefs.js:414
-msgid "About"
+#: prefs.js:19
+msgid "General"
 msgstr ""
 
-#: po/source-strings.js:5
-msgid "Author"
+#: prefs.js:23
+msgid "Label"
 msgstr ""
 
-#: po/source-strings.js:6
-msgid "Automatic"
-msgstr ""
-
-#: po/source-strings.js:7
-msgid ""
-"Automatic aggregates physical network interfaces and avoids double-counting "
-"virtual bridges."
-msgstr ""
-
-#: po/source-strings.js:9
-msgid "Automatic physical interfaces"
-msgstr ""
-
-#: po/source-strings.js:10
-msgid "Automatic while media is playing"
-msgstr ""
-
-#: po/source-strings.js:11
-msgid "Avoids unnecessary hardware polling on the lock screen."
-msgstr ""
-
-#: po/source-strings.js:12
-msgid "Battery interval multiplier"
-msgstr ""
-
-#: po/source-strings.js:13
-msgid "Block screen saver"
-msgstr ""
-
-#: po/source-strings.js:14
-msgid "CPU readings"
-msgstr ""
-
-#: po/source-strings.js:15
-msgid "CPU temperature"
-msgstr ""
-
-#: po/source-strings.js:16
-msgid "CPU usage"
-msgstr ""
-
-#: po/source-strings.js:17
-msgid "Choose Celsius or Fahrenheit for panel values and tooltips."
-msgstr ""
-
-#: po/source-strings.js:18
-msgid "Choose what happens when a metric is clicked or keyboard-activated."
-msgstr ""
-
-#: po/source-strings.js:19
+#: prefs.js:24
 msgid "Choose what text appears next to the avatar in the top bar."
 msgstr ""
 
-#: po/source-strings.js:20
-msgid "Choose when the GNOME top bar should hide automatically."
+#: prefs.js:28
+msgid "Include computer name"
 msgstr ""
 
-#: po/source-strings.js:21
-msgid "Choose which live temperature columns are shown in the top bar."
+#: prefs.js:29
+msgid "Shows a computer icon with the hostname, for example \"John on myPC\"."
 msgstr ""
 
-#: po/source-strings.js:22
-msgid "Choose which live usage columns are shown in the top bar."
-msgstr ""
-
-#: po/source-strings.js:23
-msgid "Compact metrics"
-msgstr ""
-
-#: po/source-strings.js:24
+#: prefs.js:41
 msgid "Controls whether the account real/display name is shown in the top bar."
 msgstr ""
 
-#: po/source-strings.js:25
+#: prefs.js:53
 msgid "Controls whether the user avatar is shown in the top bar."
 msgstr ""
 
-#: po/source-strings.js:26
+#: prefs.js:64
+msgid "Place after Apps and Places"
+msgstr ""
+
+#: prefs.js:65
+msgid ""
+"When enabled, the panel item moves after those menus if they are present."
+msgstr ""
+
+#: prefs.js:77
+msgid "Disable this if you only want the quick settings menu entry."
+msgstr ""
+
+#: prefs.js:89
 msgid ""
 "Controls whether the username tile appears in the right-side quick settings "
 "menu."
 msgstr ""
 
-#: po/source-strings.js:27
-msgid "Critical threshold"
-msgstr ""
-
-#: po/source-strings.js:28
-msgid "DRM devices"
-msgstr ""
-
-#: po/source-strings.js:29
-msgid "Denis Zvegelj, 2026"
-msgstr ""
-
-#: po/source-strings.js:30
-msgid "Description"
-msgstr ""
-
-#: po/source-strings.js:31
+#: prefs.js:112
 msgid "Desktop Behavior"
 msgstr ""
 
-#: po/source-strings.js:32
-msgid "Desktop-wide primary-paste and touchpad settings are not reset."
-msgstr ""
-
-#: po/source-strings.js:33
-msgid "Detected Hardware"
-msgstr ""
-
-#: po/source-strings.js:34
-msgid "Disable this if you only want the quick settings menu entry."
-msgstr ""
-
-#: po/source-strings.js:35
-msgid ""
-"Disable this to show temperature icons and values in the default white panel "
-"color."
-msgstr ""
-
-#: po/source-strings.js:36
-msgid ""
-"Disable this to show usage icons and bars in the default white panel color."
-msgstr ""
-
-#: po/source-strings.js:37
-msgid "Discrete GPU"
-msgstr ""
-
-#: po/source-strings.js:38
-msgid "Discrete GPU temperature"
-msgstr ""
-
-#: po/source-strings.js:39
-msgid "Discrete GPU usage"
-msgstr ""
-
-#: po/source-strings.js:40
-msgid "Disk activity"
-msgstr ""
-
-#: po/source-strings.js:41
-msgid "Disk source"
-msgstr ""
-
-#: po/source-strings.js:44
-msgid "Display position"
-msgstr ""
-
-#: po/source-strings.js:45
-msgid "Duration"
-msgstr ""
-
-#: po/source-strings.js:46
-msgid "Duration used whenever the timer is started."
-msgstr ""
-
-#: po/source-strings.js:49
-msgid "GNU GPL v3"
-msgstr ""
-
-#: po/source-strings.js:50
-msgid "GPU Devices"
-msgstr ""
-
-#: po/source-strings.js:51
-msgid "Hardware monitors"
-msgstr ""
-
-#: po/source-strings.js:53
-msgid "Hide the top bar whenever the focused app is fullscreen."
-msgstr ""
-
-#: po/source-strings.js:54
-msgid "Hide the top bar whenever the focused window is maximized."
-msgstr ""
-
-#: po/source-strings.js:55
-msgid ""
-"Hide the top bar whenever the focused window reaches the top edge of the "
-"screen."
-msgstr ""
-
-#: po/source-strings.js:58
-msgid ""
-"If this extension is useful, you can support future development on idz.si."
-msgstr ""
-
-#: po/source-strings.js:59
-msgid "Include computer name"
-msgstr ""
-
-#: po/source-strings.js:60
-msgid "Installed version"
-msgstr ""
-
-#: po/source-strings.js:61
-msgid "Integrated GPU"
-msgstr ""
-
-#: po/source-strings.js:62
-msgid "Integrated GPU temperature"
-msgstr ""
-
-#: po/source-strings.js:63
-msgid "Integrated GPU usage"
-msgstr ""
-
-#: po/source-strings.js:64 prefs.js:278
-msgid "Keep Awake"
-msgstr ""
-
-#: po/source-strings.js:65
-msgid "Keeps the session awake while an MPRIS-compatible app reports playback."
-msgstr ""
-
-#: po/source-strings.js:66
-msgid "Keeps the session awake while the focused app is fullscreen."
-msgstr ""
-
-#: po/source-strings.js:67
-msgid "Label"
-msgstr ""
-
-#: po/source-strings.js:68
-msgid ""
-"Left shows loads after the user item; right shows loads before the system "
-"icons."
-msgstr ""
-
-#: po/source-strings.js:69
-msgid ""
-"Left shows temperatures after loads; right shows temperatures before loads."
-msgstr ""
-
-#: po/source-strings.js:70
-msgid "License"
-msgstr ""
-
-#: po/source-strings.js:71
-msgid "Memory inventory"
-msgstr ""
-
-#: po/source-strings.js:72
-msgid "Memory usage"
-msgstr ""
-
-#: po/source-strings.js:73
-msgid "Metric click action"
-msgstr ""
-
-#: po/source-strings.js:74
-msgid "Multiplier applied to normal metric polling intervals."
-msgstr ""
-
-#: po/source-strings.js:75
-msgid "NVIDIA GPU index"
-msgstr ""
-
-#: po/source-strings.js:76
-msgid "NVIDIA metrics"
-msgstr ""
-
-#: po/source-strings.js:77
-msgid "NVIDIA selection"
-msgstr ""
-
-#: po/source-strings.js:78
-msgid "Network Device"
-msgstr ""
-
-#: po/source-strings.js:79
-msgid "Network interface"
-msgstr ""
-
-#: po/source-strings.js:80
-msgid "Network source"
-msgstr ""
-
-#: po/source-strings.js:81
-msgid "Network throughput"
-msgstr ""
-
-#: po/source-strings.js:82
-msgid ""
-"Override automatic GPU classification when a hybrid or AMD-only system is "
-"detected incorrectly."
-msgstr ""
-
-#: po/source-strings.js:83
-msgid "Pause while locked"
-msgstr ""
-
-#: po/source-strings.js:84
-msgid "Performance and Power"
-msgstr ""
-
-#: po/source-strings.js:85
-msgid "Place after Apps and Places"
-msgstr ""
-
-#: po/source-strings.js:86
-msgid "Polling stops while locked and slows down on battery by default."
-msgstr ""
-
-#: po/source-strings.js:87
-msgid "Prevent the session from going idle while the toggle is enabled."
-msgstr ""
-
-#: po/source-strings.js:88
+#: prefs.js:113
 msgid ""
 "Quick access to a couple of GNOME desktop defaults that many Fedora 44 and "
 "GNOME 50 users want to turn back on."
 msgstr ""
 
-#: po/source-strings.js:89
-msgid ""
-"Read-only local information used by the extension. No data is transmitted."
-msgstr ""
-
-#: po/source-strings.js:90
-msgid "Reduce panel spacing when many metrics are enabled."
-msgstr ""
-
-#: po/source-strings.js:91
-msgid "Reduce polling on battery"
-msgstr ""
-
-#: po/source-strings.js:92
-msgid "Reset"
-msgstr ""
-
-#: po/source-strings.js:93
-msgid "Reset extension settings"
-msgstr ""
-
-#: po/source-strings.js:94
-msgid "Reset to Defaults"
-msgstr ""
-
-#: po/source-strings.js:95
-msgid "Restore every extension preference to its schema default."
-msgstr ""
-
-#: po/source-strings.js:96
+#: prefs.js:118
 msgid ""
 "Restores middle-click paste from selected text by setting gtk-enable-primary-"
 "paste."
 msgstr ""
 
-#: po/source-strings.js:97
-msgid "Seconds between CPU and GPU temperature updates."
-msgstr ""
-
-#: po/source-strings.js:98
-msgid "Seconds between CPU, memory, swap, and GPU usage updates."
-msgstr ""
-
-#: po/source-strings.js:99
-msgid "Selected GPU"
-msgstr ""
-
-#: po/source-strings.js:100
-msgid "Sensor access"
-msgstr ""
-
-#: po/source-strings.js:101
+#: prefs.js:131
 msgid ""
 "Sets the touchpad tap button map to lrm so three-finger tap acts as middle "
 "click."
 msgstr ""
 
-#: po/source-strings.js:102
-msgid "Show decimal values"
-msgstr ""
-
-#: po/source-strings.js:105
-msgid "Shows CPU load as a percentage column."
-msgstr ""
-
-#: po/source-strings.js:106
-msgid ""
-"Shows a colored sun icon in the panel while active and also appears in the "
-"user submenu."
-msgstr ""
-
-#: po/source-strings.js:107
-msgid "Shows a computer icon with the hostname, for example \"John on myPC\"."
-msgstr ""
-
-#: po/source-strings.js:108
-msgid "Shows aggregate download speed with upload speed in the tooltip."
-msgstr ""
-
-#: po/source-strings.js:109
-msgid ""
-"Shows aggregate physical-disk read speed with write speed in the tooltip."
-msgstr ""
-
-#: po/source-strings.js:110
-msgid "Shows dGPU temperature when available."
-msgstr ""
-
-#: po/source-strings.js:111
-msgid "Shows dGPU usage and memory details when exposed by the driver."
-msgstr ""
-
-#: po/source-strings.js:112
-msgid "Shows iGPU temperature when available."
-msgstr ""
-
-#: po/source-strings.js:113
-msgid "Shows iGPU usage and memory details when exposed by the driver."
-msgstr ""
-
-#: po/source-strings.js:114
-msgid "Shows memory utilization with used and total memory in the tooltip."
-msgstr ""
-
-#: po/source-strings.js:115
-msgid "Shows one decimal place for temperatures when the sensor provides it."
-msgstr ""
-
-#: po/source-strings.js:116
-msgid "Shows swap utilization when swap is configured."
-msgstr ""
-
-#: po/source-strings.js:117
-msgid "Shows the CPU package temperature when available."
-msgstr ""
-
-#: po/source-strings.js:118
-msgid "Support"
-msgstr ""
-
-#: po/source-strings.js:119
-msgid "Support further development"
-msgstr ""
-
-#: po/source-strings.js:120
-msgid "Swap usage"
-msgstr ""
-
-#: po/source-strings.js:121 prefs.js:157
+#: prefs.js:157 prefs.js:161
 msgid "System Loads"
 msgstr ""
 
-#: po/source-strings.js:122
-msgid "Temperature in Celsius where the orange warning color begins."
+#: prefs.js:162
+msgid "Choose which live usage columns are shown in the top bar."
 msgstr ""
 
-#: po/source-strings.js:123
-msgid "Temperature in Celsius where the red critical color begins."
+#: prefs.js:165 prefs.js:239
+msgid "Display position"
 msgstr ""
 
-#: po/source-strings.js:124
-msgid "Temperature polling interval"
-msgstr ""
-
-#: po/source-strings.js:125
-msgid "Temperature unit"
-msgstr ""
-
-#: po/source-strings.js:126 prefs.js:231
-msgid "Temperatures"
-msgstr ""
-
-#: po/source-strings.js:127
+#: prefs.js:166
 msgid ""
-"Temporarily keep the session awake, then turn the timer off automatically."
-msgstr ""
-
-#: po/source-strings.js:129
-msgid "Timer"
-msgstr ""
-
-#: po/source-strings.js:130
-msgid "Top Bar Autohide"
-msgstr ""
-
-#: po/source-strings.js:131
-msgid "Usage polling interval"
-msgstr ""
-
-#: po/source-strings.js:132
-msgid "Use colored temperature icons"
-msgstr ""
-
-#: po/source-strings.js:133
-msgid "Use colored usage icons"
-msgstr ""
-
-#: po/source-strings.js:134
-msgid "Uses a longer interval while UPower reports battery operation."
-msgstr ""
-
-#: po/source-strings.js:135
-msgid "Warning threshold"
-msgstr ""
-
-#: po/source-strings.js:136
-msgid ""
-"When enabled, fullscreen autohide applies to focused fullscreen windows on "
-"any monitor, not only the primary one."
-msgstr ""
-
-#: po/source-strings.js:137
-msgid ""
-"When enabled, the panel item moves after those menus if they are present."
-msgstr ""
-
-#: po/source-strings.js:138
-msgid ""
-"Zero-based nvidia-smi device index for systems with multiple NVIDIA GPUs."
-msgstr ""
-
-#: prefs.js:19
-msgid "General"
+"Left shows loads after the user item; right shows loads before the system "
+"icons."
 msgstr ""
 
 #: prefs.js:167 prefs.js:241
@@ -670,6 +227,82 @@ msgstr ""
 
 #: prefs.js:167 prefs.js:241
 msgid "Right side"
+msgstr ""
+
+#: prefs.js:174
+msgid "Usage polling interval"
+msgstr ""
+
+#: prefs.js:175
+msgid "CPU usage"
+msgstr ""
+
+#: prefs.js:176
+msgid "Memory usage"
+msgstr ""
+
+#: prefs.js:177
+msgid "Swap usage"
+msgstr ""
+
+#: prefs.js:178
+msgid "Integrated GPU usage"
+msgstr ""
+
+#: prefs.js:179
+msgid "Discrete GPU usage"
+msgstr ""
+
+#: prefs.js:180
+msgid "Network throughput"
+msgstr ""
+
+#: prefs.js:181
+msgid "Disk activity"
+msgstr ""
+
+#: prefs.js:182
+msgid "Use colored usage icons"
+msgstr ""
+
+#: prefs.js:184
+msgid "Compact metrics"
+msgstr ""
+
+#: prefs.js:188
+msgid "GPU Devices"
+msgstr ""
+
+#: prefs.js:189
+msgid ""
+"Override automatic GPU classification when a hybrid or AMD-only system is "
+"detected incorrectly."
+msgstr ""
+
+#: prefs.js:192
+msgid "Integrated GPU"
+msgstr ""
+
+#: prefs.js:193
+msgid "Discrete GPU"
+msgstr ""
+
+#: prefs.js:194
+msgid "NVIDIA GPU index"
+msgstr ""
+
+#: prefs.js:198
+msgid "Network Device"
+msgstr ""
+
+#: prefs.js:199
+msgid ""
+"Automatic aggregates physical network interfaces and avoids double-counting "
+"virtual bridges."
+msgstr ""
+
+#: prefs.js:201
+msgid "Network interface"
 msgstr ""
 
 #: prefs.js:202
@@ -690,12 +323,65 @@ msgstr ""
 msgid "Aggregate endpoints"
 msgstr ""
 
+#: prefs.js:212
+msgid "Performance and Power"
+msgstr ""
+
+#: prefs.js:213
+msgid "Polling stops while locked and slows down on battery by default."
+msgstr ""
+
+#: prefs.js:215
+msgid "Pause while locked"
+msgstr ""
+
+#: prefs.js:216
+msgid "Reduce polling on battery"
+msgstr ""
+
+#: prefs.js:217
+msgid "Battery interval multiplier"
+msgstr ""
+
+#: prefs.js:219
+msgid "Metric click action"
+msgstr ""
+
+#: prefs.js:220
+msgid "Choose what happens when a metric is clicked or keyboard-activated."
+msgstr ""
+
 #: prefs.js:221
 msgid "Open System Monitor"
 msgstr ""
 
 #: prefs.js:221
 msgid "Do nothing"
+msgstr ""
+
+#: prefs.js:231 prefs.js:235
+msgid "Temperatures"
+msgstr ""
+
+#: prefs.js:236
+msgid "Choose which live temperature columns are shown in the top bar."
+msgstr ""
+
+#: prefs.js:240
+msgid ""
+"Left shows temperatures after loads; right shows temperatures before loads."
+msgstr ""
+
+#: prefs.js:248
+msgid "Temperature polling interval"
+msgstr ""
+
+#: prefs.js:250
+msgid "Temperature unit"
+msgstr ""
+
+#: prefs.js:251
+msgid "Choose Celsius or Fahrenheit for panel values and tooltips."
 msgstr ""
 
 #: prefs.js:252
@@ -706,8 +392,185 @@ msgstr ""
 msgid "Fahrenheit (°F)"
 msgstr ""
 
+#: prefs.js:259
+msgid "Show decimal values"
+msgstr ""
+
+#: prefs.js:260
+msgid "CPU temperature"
+msgstr ""
+
+#: prefs.js:261
+msgid "Integrated GPU temperature"
+msgstr ""
+
+#: prefs.js:262
+msgid "Discrete GPU temperature"
+msgstr ""
+
+#: prefs.js:263
+msgid "Use colored temperature icons"
+msgstr ""
+
+#: prefs.js:264
+msgid "Warning threshold"
+msgstr ""
+
+#: prefs.js:265
+msgid "Critical threshold"
+msgstr ""
+
+#: prefs.js:278 prefs.js:282
+msgid "Keep Awake"
+msgstr ""
+
+#: prefs.js:283
+msgid "Prevent the session from going idle while the toggle is enabled."
+msgstr ""
+
+#: prefs.js:286
+msgid "Block screen saver"
+msgstr ""
+
+#: prefs.js:287
+msgid ""
+"Shows a colored sun icon in the panel while active and also appears in the "
+"user submenu."
+msgstr ""
+
+#: prefs.js:297
+msgid "Automatic while media is playing"
+msgstr ""
+
+#: prefs.js:301
+msgid "Timer"
+msgstr ""
+
+#: prefs.js:302
+msgid ""
+"Temporarily keep the session awake, then turn the timer off automatically."
+msgstr ""
+
+#: prefs.js:307
+msgid "Duration"
+msgstr ""
+
+#: prefs.js:308
+msgid "Duration used whenever the timer is started."
+msgstr ""
+
+#: prefs.js:316
+msgid "Start keep-awake timer"
+msgstr ""
+
+#: prefs.js:324
+msgid "Top Bar Autohide"
+msgstr ""
+
+#: prefs.js:325
+msgid "Choose when the GNOME top bar should hide automatically."
+msgstr ""
+
+#: prefs.js:329
+msgid "Hide the top bar whenever the focused app is fullscreen."
+msgstr ""
+
+#: prefs.js:339
+msgid ""
+"When enabled, fullscreen autohide applies to focused fullscreen windows on "
+"any monitor, not only the primary one."
+msgstr ""
+
+#: prefs.js:353
+msgid "Hide the top bar whenever the focused window is maximized."
+msgstr ""
+
+#: prefs.js:363
+msgid ""
+"Hide the top bar whenever the focused window reaches the top edge of the "
+"screen."
+msgstr ""
+
 #: prefs.js:379
 msgid "Diagnostics"
+msgstr ""
+
+#: prefs.js:383
+msgid "Detected Hardware"
+msgstr ""
+
+#: prefs.js:384
+msgid ""
+"Read-only local information used by the extension. No data is transmitted."
+msgstr ""
+
+#: prefs.js:391
+msgid "Reset"
+msgstr ""
+
+#: prefs.js:392
+msgid "Restore every extension preference to its schema default."
+msgstr ""
+
+#: prefs.js:395
+msgid "Reset extension settings"
+msgstr ""
+
+#: prefs.js:396
+msgid "Desktop-wide primary-paste and touchpad settings are not reset."
+msgstr ""
+
+#: prefs.js:399
+msgid "Reset to Defaults"
+msgstr ""
+
+#: prefs.js:414 prefs.js:418
+msgid "About"
+msgstr ""
+
+#: prefs.js:421
+msgid "Description"
+msgstr ""
+
+#: prefs.js:425
+msgid "Author"
+msgstr ""
+
+#: prefs.js:426
+msgid "Denis Zvegelj, 2026"
+msgstr ""
+
+#: prefs.js:429
+msgid "License"
+msgstr ""
+
+#: prefs.js:430
+msgid "GNU GPL v3"
+msgstr ""
+
+#: prefs.js:433
+msgid "Installed version"
+msgstr ""
+
+#: prefs.js:443
+msgid "Support"
+msgstr ""
+
+#: prefs.js:446
+msgid "Support further development"
+msgstr ""
+
+#: prefs.js:447
+msgid ""
+"If this extension is useful, you can support future development on idz.si."
+msgstr ""
+
+#: prefs.js:536
+msgid "Automatic"
+msgstr ""
+
+#: prefs.js:556
+msgid "Automatic physical interfaces"
 msgstr ""
 
 #: prefs.js:580

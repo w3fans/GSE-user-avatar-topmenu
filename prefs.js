@@ -20,13 +20,13 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'avatar-default-symbolic',
         });
         const generalGroup = new Adw.PreferencesGroup({
-            title: 'Label',
-            description: 'Choose what text appears next to the avatar in the top bar.',
+            title: this.gettext('Label'),
+            description: this.gettext('Choose what text appears next to the avatar in the top bar.'),
         });
 
         const showHostRow = new Adw.SwitchRow({
-            title: 'Include computer name',
-            subtitle: 'Shows a computer icon with the hostname, for example "John on myPC".',
+            title: this.gettext('Include computer name'),
+            subtitle: this.gettext('Shows a computer icon with the hostname, for example "John on myPC".'),
         });
 
         settings.bind(
@@ -37,8 +37,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const showUsernameRow = new Adw.SwitchRow({
-            title: 'Display name',
-            subtitle: 'Controls whether the account real/display name is shown in the top bar.',
+            title: this.gettext('Display name'),
+            subtitle: this.gettext('Controls whether the account real/display name is shown in the top bar.'),
         });
 
         settings.bind(
@@ -49,8 +49,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const showAvatarRow = new Adw.SwitchRow({
-            title: 'Display avatar',
-            subtitle: 'Controls whether the user avatar is shown in the top bar.',
+            title: this.gettext('Display avatar'),
+            subtitle: this.gettext('Controls whether the user avatar is shown in the top bar.'),
         });
 
         settings.bind(
@@ -61,8 +61,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const placeAfterNavigationRow = new Adw.SwitchRow({
-            title: 'Place after Apps and Places',
-            subtitle: 'When enabled, the panel item moves after those menus if they are present.',
+            title: this.gettext('Place after Apps and Places'),
+            subtitle: this.gettext('When enabled, the panel item moves after those menus if they are present.'),
         });
 
         settings.bind(
@@ -73,8 +73,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const showTopBarRow = new Adw.SwitchRow({
-            title: 'Show in top bar',
-            subtitle: 'Disable this if you only want the quick settings menu entry.',
+            title: this.gettext('Show in top bar'),
+            subtitle: this.gettext('Disable this if you only want the quick settings menu entry.'),
         });
 
         settings.bind(
@@ -85,8 +85,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         );
 
         const showQuickSettingsRow = new Adw.SwitchRow({
-            title: 'Show in quick settings',
-            subtitle: 'Controls whether the username tile appears in the right-side quick settings menu.',
+            title: this.gettext('Show in quick settings'),
+            subtitle: this.gettext('Controls whether the username tile appears in the right-side quick settings menu.'),
         });
 
         settings.bind(
@@ -109,13 +109,13 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'preferences-desktop-symbolic',
         });
         const desktopGroup = new Adw.PreferencesGroup({
-            title: 'Desktop Behavior',
-            description: 'Quick access to a couple of GNOME desktop defaults that many Fedora 44 and GNOME 50 users want to turn back on.',
+            title: this.gettext('Desktop Behavior'),
+            description: this.gettext('Quick access to a couple of GNOME desktop defaults that many Fedora 44 and GNOME 50 users want to turn back on.'),
         });
 
         const primaryPasteRow = new Adw.SwitchRow({
-            title: 'Enable primary paste',
-            subtitle: 'Restores middle-click paste from selected text by setting gtk-enable-primary-paste.',
+            title: this.gettext('Enable primary paste'),
+            subtitle: this.gettext('Restores middle-click paste from selected text by setting gtk-enable-primary-paste.'),
         });
         primaryPasteRow.active = desktopInterfaceSettings.get_boolean('gtk-enable-primary-paste');
         primaryPasteRow.connect('notify::active', row => {
@@ -127,8 +127,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
 
         const touchpadMiddleClickRow = new Adw.SwitchRow({
-            title: 'Three-finger middle click',
-            subtitle: 'Sets the touchpad tap button map to lrm so three-finger tap acts as middle click.',
+            title: this.gettext('Three-finger middle click'),
+            subtitle: this.gettext('Sets the touchpad tap button map to lrm so three-finger tap acts as middle click.'),
         });
         touchpadMiddleClickRow.active = touchpadSettings.get_string('tap-button-map') === 'lrm';
         touchpadMiddleClickRow.connect('notify::active', row => {
@@ -158,12 +158,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'power-profile-performance-symbolic',
         });
         const loadsGroup = new Adw.PreferencesGroup({
-            title: 'System Loads',
-            description: 'Choose which live usage columns are shown in the top bar.',
+            title: this.gettext('System Loads'),
+            description: this.gettext('Choose which live usage columns are shown in the top bar.'),
         });
         const loadsPositionRow = new Adw.ComboRow({
-            title: 'Display position',
-            subtitle: 'Left shows loads after the user item; right shows loads before the system icons.',
+            title: this.gettext('Display position'),
+            subtitle: this.gettext('Left shows loads after the user item; right shows loads before the system icons.'),
             model: Gtk.StringList.new([_('Left side'), _('Right side')]),
             selected: settings.get_string('loads-position') === 'right' ? 1 : 0,
         });
@@ -185,8 +185,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         loadsPage.add(loadsGroup);
 
         const deviceGroup = new Adw.PreferencesGroup({
-            title: 'GPU Devices',
-            description: 'Override automatic GPU classification when a hybrid or AMD-only system is detected incorrectly.',
+            title: this.gettext('GPU Devices'),
+            description: this.gettext('Override automatic GPU classification when a hybrid or AMD-only system is detected incorrectly.'),
         });
         const gpuChoices = this._getGpuChoices();
         this._addDeviceRow(deviceGroup, settings, 'igpu-device', 'Integrated GPU', gpuChoices);
@@ -195,8 +195,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         loadsPage.add(deviceGroup);
 
         const networkGroup = new Adw.PreferencesGroup({
-            title: 'Network Device',
-            description: 'Automatic aggregates physical network interfaces and avoids double-counting virtual bridges.',
+            title: this.gettext('Network Device'),
+            description: this.gettext('Automatic aggregates physical network interfaces and avoids double-counting virtual bridges.'),
         });
         this._addDeviceRow(networkGroup, settings, 'network-interface', 'Network interface', this._getNetworkChoices());
         const networkMode = new Adw.ComboRow({title: _('Automatic network mode'),
@@ -209,15 +209,15 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         loadsPage.add(networkGroup);
 
         const performanceGroup = new Adw.PreferencesGroup({
-            title: 'Performance and Power',
-            description: 'Polling stops while locked and slows down on battery by default.',
+            title: this.gettext('Performance and Power'),
+            description: this.gettext('Polling stops while locked and slows down on battery by default.'),
         });
         this._addBoundSwitch(performanceGroup, settings, 'pause-metrics-when-locked', 'Pause while locked', 'Avoids unnecessary hardware polling on the lock screen.');
         this._addBoundSwitch(performanceGroup, settings, 'adaptive-refresh-on-battery', 'Reduce polling on battery', 'Uses a longer interval while UPower reports battery operation.');
         this._addPollingIntervalRow(performanceGroup, settings, 'battery-refresh-multiplier', 'Battery interval multiplier', 'Multiplier applied to normal metric polling intervals.', 10, 2);
         const clickActionRow = new Adw.ComboRow({
-            title: 'Metric click action',
-            subtitle: 'Choose what happens when a metric is clicked or keyboard-activated.',
+            title: this.gettext('Metric click action'),
+            subtitle: this.gettext('Choose what happens when a metric is clicked or keyboard-activated.'),
             model: Gtk.StringList.new([_('Open System Monitor'), _('Do nothing')]),
             selected: settings.get_string('metrics-click-action') === 'none' ? 1 : 0,
         });
@@ -232,12 +232,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'temperature-symbolic',
         });
         const tempsGroup = new Adw.PreferencesGroup({
-            title: 'Temperatures',
-            description: 'Choose which live temperature columns are shown in the top bar.',
+            title: this.gettext('Temperatures'),
+            description: this.gettext('Choose which live temperature columns are shown in the top bar.'),
         });
         const tempsPositionRow = new Adw.ComboRow({
-            title: 'Display position',
-            subtitle: 'Left shows temperatures after loads; right shows temperatures before loads.',
+            title: this.gettext('Display position'),
+            subtitle: this.gettext('Left shows temperatures after loads; right shows temperatures before loads.'),
             model: Gtk.StringList.new([_('Left side'), _('Right side')]),
             selected: settings.get_string('temps-position') === 'right' ? 1 : 0,
         });
@@ -247,8 +247,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         tempsGroup.add(tempsPositionRow);
         this._addPollingIntervalRow(tempsGroup, settings, 'temps-refresh-seconds', 'Temperature polling interval', 'Seconds between CPU and GPU temperature updates.', 60);
         const temperatureUnitRow = new Adw.ComboRow({
-            title: 'Temperature unit',
-            subtitle: 'Choose Celsius or Fahrenheit for panel values and tooltips.',
+            title: this.gettext('Temperature unit'),
+            subtitle: this.gettext('Choose Celsius or Fahrenheit for panel values and tooltips.'),
             model: Gtk.StringList.new([_('Celsius (°C)'), _('Fahrenheit (°F)')]),
             selected: settings.get_string('temperature-unit') === 'fahrenheit' ? 1 : 0,
         });
@@ -279,12 +279,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'weather-clear-symbolic',
         });
         const awakeGroup = new Adw.PreferencesGroup({
-            title: 'Keep Awake',
-            description: 'Prevent the session from going idle while the toggle is enabled.',
+            title: this.gettext('Keep Awake'),
+            description: this.gettext('Prevent the session from going idle while the toggle is enabled.'),
         });
         const keepAwakeRow = new Adw.SwitchRow({
-            title: 'Block screen saver',
-            subtitle: 'Shows a colored sun icon in the panel while active and also appears in the user submenu.',
+            title: this.gettext('Block screen saver'),
+            subtitle: this.gettext('Shows a colored sun icon in the panel while active and also appears in the user submenu.'),
         });
         settings.bind(
             'keep-awake',
@@ -298,14 +298,14 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         awakePage.add(awakeGroup);
 
         const timerGroup = new Adw.PreferencesGroup({
-            title: 'Timer',
-            description: 'Temporarily keep the session awake, then turn the timer off automatically.',
+            title: this.gettext('Timer'),
+            description: this.gettext('Temporarily keep the session awake, then turn the timer off automatically.'),
         });
         const timerDurations = [15, 30, 60, 120];
         const timerMinutes = settings.get_uint('keep-awake-timer-minutes');
         const timerDurationRow = new Adw.ComboRow({
-            title: 'Duration',
-            subtitle: 'Duration used whenever the timer is started.',
+            title: this.gettext('Duration'),
+            subtitle: this.gettext('Duration used whenever the timer is started.'),
             model: Gtk.StringList.new([_('15 minutes'), _('30 minutes'), _('1 hour'), _('2 hours')]),
             selected: Math.max(0, timerDurations.indexOf(timerMinutes)),
         });
@@ -321,12 +321,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'view-fullscreen-symbolic',
         });
         const autohideGroup = new Adw.PreferencesGroup({
-            title: 'Top Bar Autohide',
-            description: 'Choose when the GNOME top bar should hide automatically.',
+            title: this.gettext('Top Bar Autohide'),
+            description: this.gettext('Choose when the GNOME top bar should hide automatically.'),
         });
         const hideInFullscreenRow = new Adw.SwitchRow({
-            title: 'Hide in fullscreen',
-            subtitle: 'Hide the top bar whenever the focused app is fullscreen.',
+            title: this.gettext('Hide in fullscreen'),
+            subtitle: this.gettext('Hide the top bar whenever the focused app is fullscreen.'),
         });
         settings.bind(
             'hide-topbar-fullscreen',
@@ -335,8 +335,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         const hideFullscreenAllMonitorsRow = new Adw.SwitchRow({
-            title: 'Fullscreen on all monitors',
-            subtitle: 'When enabled, fullscreen autohide applies to focused fullscreen windows on any monitor, not only the primary one.',
+            title: this.gettext('Fullscreen on all monitors'),
+            subtitle: this.gettext('When enabled, fullscreen autohide applies to focused fullscreen windows on any monitor, not only the primary one.'),
         });
         settings.bind(
             'hide-topbar-fullscreen-all-monitors',
@@ -349,8 +349,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         };
         settings.connect('changed::hide-topbar-fullscreen', syncFullscreenDependency);
         const hideMaximizedRow = new Adw.SwitchRow({
-            title: 'Hide when maximized',
-            subtitle: 'Hide the top bar whenever the focused window is maximized.',
+            title: this.gettext('Hide when maximized'),
+            subtitle: this.gettext('Hide the top bar whenever the focused window is maximized.'),
         });
         settings.bind(
             'hide-topbar-maximized',
@@ -359,8 +359,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         const hideTouchingRow = new Adw.SwitchRow({
-            title: 'Hide when touching top bar',
-            subtitle: 'Hide the top bar whenever the focused window reaches the top edge of the screen.',
+            title: this.gettext('Hide when touching top bar'),
+            subtitle: this.gettext('Hide the top bar whenever the focused window reaches the top edge of the screen.'),
         });
         settings.bind(
             'hide-topbar-touching',
@@ -380,23 +380,23 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'preferences-system-symbolic',
         });
         const diagnosticsGroup = new Adw.PreferencesGroup({
-            title: 'Detected Hardware',
-            description: 'Read-only local information used by the extension. No data is transmitted.',
+            title: this.gettext('Detected Hardware'),
+            description: this.gettext('Read-only local information used by the extension. No data is transmitted.'),
         });
         for (const [title, subtitle] of this._getDiagnostics(settings))
             diagnosticsGroup.add(new Adw.ActionRow({title, subtitle}));
         diagnosticsPage.add(diagnosticsGroup);
 
         const resetGroup = new Adw.PreferencesGroup({
-            title: 'Reset',
-            description: 'Restore every extension preference to its schema default.',
+            title: this.gettext('Reset'),
+            description: this.gettext('Restore every extension preference to its schema default.'),
         });
         const resetRow = new Adw.ActionRow({
-            title: 'Reset extension settings',
-            subtitle: 'Desktop-wide primary-paste and touchpad settings are not reset.',
+            title: this.gettext('Reset extension settings'),
+            subtitle: this.gettext('Desktop-wide primary-paste and touchpad settings are not reset.'),
         });
         const resetButton = new Gtk.Button({
-            label: 'Reset to Defaults',
+            label: this.gettext('Reset to Defaults'),
             valign: Gtk.Align.CENTER,
             css_classes: ['destructive-action'],
         });
@@ -415,22 +415,22 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             icon_name: 'help-about-symbolic',
         });
         const infoGroup = new Adw.PreferencesGroup({
-            title: 'About',
+            title: this.gettext('About'),
         });
         const descriptionRow = new Adw.ActionRow({
-            title: 'Description',
+            title: this.gettext('Description'),
             subtitle: this.metadata.description,
         });
         const authorRow = new Adw.ActionRow({
-            title: 'Author',
-            subtitle: 'Denis Zvegelj, 2026',
+            title: this.gettext('Author'),
+            subtitle: this.gettext('Denis Zvegelj, 2026'),
         });
         const licenseRow = new Adw.ActionRow({
-            title: 'License',
-            subtitle: 'GNU GPL v3',
+            title: this.gettext('License'),
+            subtitle: this.gettext('GNU GPL v3'),
         });
         const versionRow = new Adw.ActionRow({
-            title: 'Installed version',
+            title: this.gettext('Installed version'),
             subtitle: version,
         });
         infoGroup.add(descriptionRow);
@@ -440,11 +440,11 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         aboutPage.add(infoGroup);
 
         const supportGroup = new Adw.PreferencesGroup({
-            title: 'Support',
+            title: this.gettext('Support'),
         });
         const supportRow = new Adw.ActionRow({
-            title: 'Support further development',
-            subtitle: 'If this extension is useful, you can support future development on idz.si.',
+            title: this.gettext('Support further development'),
+            subtitle: this.gettext('If this extension is useful, you can support future development on idz.si.'),
         });
         const supportButton = Gtk.LinkButton.new_with_label(
             'https://idz.si/bs/gse-user-avatar-topmenu-donate.html',
@@ -533,7 +533,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
     }
 
     _getGpuChoices() {
-        const choices = [{id: 'auto', label: 'Automatic'}];
+        const choices = [{id: 'auto', label: this.gettext('Automatic')}];
         try {
             const directory = Gio.File.new_for_path('/sys/class/drm');
             const enumerator = directory.enumerate_children(
@@ -553,7 +553,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
     }
 
     _getNetworkChoices() {
-        const choices = [{id: 'auto', label: 'Automatic physical interfaces'}];
+        const choices = [{id: 'auto', label: this.gettext('Automatic physical interfaces')}];
         try {
             const enumerator = Gio.File.new_for_path('/sys/class/net').enumerate_children(
                 'standard::name', Gio.FileQueryInfoFlags.NONE, null);

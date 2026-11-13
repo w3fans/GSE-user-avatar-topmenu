@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.11
+
+- Close the remaining invalid-NVIDIA-index fallback in temperatures and descriptions
+- Extract Preferences translations directly with gettext keywords instead of a regex-generated intermediate file
+
 ## 0.8.10
 
 - Retain metric actors and keyboard focus across samples; update visible tooltip data and usage bars in place
