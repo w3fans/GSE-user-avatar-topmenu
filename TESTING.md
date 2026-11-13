@@ -19,6 +19,11 @@ Run the complete local validation and deterministic package build:
 ./ego-check.sh
 ```
 
+Package checks use `package-files.txt` for public builds and additionally
+`package-files-su.txt` for personal builds. `tools/check-package.mjs` rejects
+missing, unexpected, duplicate and unsafe entries, including patch backups.
+The local personal builder and SU release workflow both enforce this gate.
+
 The unit suite covers CPU and DRM utilization math, binary units, `/proc`
 network/disk parsing, DMI memory parsing, persistent timer deadlines, and
 multi-monitor geometry. A fresh nested GNOME Shell can exercise module loading,

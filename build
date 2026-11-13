@@ -28,6 +28,7 @@ done < package-files.txt
 
 7z a -tzip -mx=9 -mfb=258 -mpass=15 "$bundle" "@$manifest" >/dev/null
 cp "$bundle" "$versioned"
+node tools/check-package.mjs "$bundle" public
 
 contents="$(unzip -Z1 "$bundle")"
 diff -u <(sort "$manifest") <(printf '%s\n' "$contents" | sort) || {

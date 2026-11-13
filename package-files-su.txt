@@ -1,0 +1,7 @@
+# Additional files allowed only in the personal SU companion.
+# Combine with package-files.txt; never include these in the public EGO ZIP.
+HARDWARE-SETUP.md
+lib/gigabyteHardware.js
+lib/gigabyteHardwareCommon.js
+lib/gigabyteHardwarePrefs.js
+lib/keyboardIdle.js

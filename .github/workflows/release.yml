@@ -45,6 +45,7 @@ jobs:
           if [[ "${{ steps.meta.outputs.version_tag }}" == *su ]]; then
             bundled="${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip"
             test -f "$bundled"
+            node tools/check-package.mjs "$bundled" su
             mkdir -p dist
             cp "$bundled" "dist/$bundled"
             unzip -p "$bundled" extension.js | grep -F "['sudo', '-n', 'dmidecode', '--type', '17']"

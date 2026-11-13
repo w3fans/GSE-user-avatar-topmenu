@@ -94,8 +94,8 @@ po/update-pot.sh
 git add \
     .github/workflows/release.yml .github/workflows/ci.yml \
     CHANGELOG.md README.md TESTING.md VERSION metadata.json extension.js prefs.js stylesheet.css \
-    schemas package-files.txt package.json lib po locale tests \
-    build validate.sh ego-check.sh build-release-zips.sh release.sh tools/release-notes.mjs \
+    schemas package-files.txt package-files-su.txt package.json lib po locale tests \
+    build validate.sh ego-check.sh build-release-zips.sh release.sh tools \
     metric-*-symbolic.svg
 git commit -m "Release ${tag}"
 
@@ -108,6 +108,7 @@ personal_zip="dist/${uuid}-${su_tag}.shell-extension.zip"
     echo "Personal artifact missing: $personal_zip" >&2
     exit 1
 }
+node tools/check-package.mjs "$personal_zip" su
 
 worktree="$(mktemp -d)"
 cleanup() {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.12
+
+- Includes the full 0.8.10–0.8.11 audit remediation
+- Remove unintended patch-backup source files from the SU package
+- Verify both public and SU archives against explicit allowlists before publishing, with regression tests for backups, duplicates and unsafe paths
+
 ## 0.8.11
 
 - Includes the full 0.8.10 lifecycle, rendering, autohide, preferences and stable release remediation

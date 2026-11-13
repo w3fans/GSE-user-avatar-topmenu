@@ -147,6 +147,7 @@ That creates archives in `dist/`, for example:
 - `lib/settings.js` defines shared settings descriptors and testable derived menu state.
 - `prefs.js` builds the libadwaita preferences and diagnostics pages.
 - `package-files.txt` is the only authoritative public-package manifest.
+- `package-files-su.txt` lists the SU-only additions; both ZIP variants must match their exact combined allowlists, without patch backups or other unexpected files.
 - `tests/logic.test.js` covers parsers, utilization math, units, timer persistence, and monitor geometry.
 
 The automated suite cannot replace real GNOME Shell testing across every supported release and hardware combination. Before EGO submission, smoke-test enable/disable, Preferences, Quick Settings, autohide, keep-awake, and available sensors on the targeted Shell versions.
