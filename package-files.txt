@@ -3,12 +3,15 @@
 extension.js
 lib/logic.js
 lib/io.js
+lib/inhibitor.js
 lib/menu.js
 lib/settings.js
 metadata.json
 prefs.js
 stylesheet.css
 VERSION
+locale/sl/LC_MESSAGES/user-avatar-topmenu.mo
+locale/pl/LC_MESSAGES/user-avatar-topmenu.mo
 metric-swap-symbolic.svg
 metric-gpu-symbolic.svg
 metric-cpuTemp-symbolic.svg

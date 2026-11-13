@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$repo_root"
+bash po/compile.sh
 
 for command in node glib-compile-schemas bash git xmllint rg; do
     command -v "$command" >/dev/null || { echo "Required checker missing: $command" >&2; exit 1; }

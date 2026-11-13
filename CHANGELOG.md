@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.10
+
+- Retain metric actors and keyboard focus across samples; update visible tooltip data and usage bars in place
+- Cancel asynchronous file, enumeration and subprocess work per enable lifetime; reject stale GPU, RAM, power and media callbacks
+- Serialize keep-awake acquisition/release, retain cookies across transient failures, and release late acquisitions after disable
+- Preserve Shell panel chrome registration and original translation; use hover-driven reveal and horizontal monitor intersection
+- Exclude layered/virtual disks, reset device baselines, report invalid NVIDIA indices as unavailable, and add independent network endpoint aggregation
+- Add accessible metric ordering buttons, compact spacing and source diagnostics; preserve touchpad restoration settings
+- Ship Slovenian and Polish core UI catalogs with English fallback and a checked catalog compilation workflow
+- Expand lifecycle, persistent-rendering, failure-recovery and data-source tests; use stable/beta minor parity for both public and SU releases
+
 ## 0.8.9
 
 - SU: fade keyboard backlight to zero over two seconds after inactivity; input cancels dimming and restores the original brightness

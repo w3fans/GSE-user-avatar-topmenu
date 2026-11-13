@@ -172,6 +172,15 @@
       <summary>Show network throughput</summary>
       <description>When enabled, show aggregate non-loopback network receive throughput and details.</description>
     </key>
+    <key name="compact-metrics" type="b">
+      <default>false</default>
+      <summary>Compact metric spacing</summary>
+    </key>
+    <key name="network-mode" type="s">
+      <choices><choice value="physical"/><choice value="aggregate"/></choices>
+      <default>'physical'</default>
+      <summary>Automatic network aggregation mode</summary>
+    </key>
     <key name="network-interface" type="s">
       <default>'auto'</default>
       <summary>Network interface</summary>

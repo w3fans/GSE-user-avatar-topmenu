@@ -180,19 +180,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._addBoundSwitch(loadsGroup, settings, 'show-load-network', 'Network throughput', 'Shows aggregate download speed with upload speed in the tooltip.');
         this._addBoundSwitch(loadsGroup, settings, 'show-load-disk', 'Disk activity', 'Shows aggregate physical-disk read speed with write speed in the tooltip.');
         this._addBoundSwitch(loadsGroup, settings, 'use-load-colors', 'Use colored usage icons', 'Disable this to show usage icons and bars in the default white panel color.');
-        const metricOrderRow = new Adw.EntryRow({
-            title: 'Metric order',
-            text: settings.get_string('metric-order'),
-        });
-        metricOrderRow.add_css_class('property');
-        metricOrderRow.connect('changed', row => {
-            settings.set_string('metric-order', row.text);
-        });
-        settings.connect('changed::metric-order', () => {
-            if (metricOrderRow.text !== settings.get_string('metric-order'))
-                metricOrderRow.text = settings.get_string('metric-order');
-        });
-        loadsGroup.add(metricOrderRow);
+        this._addOrderRows(loadsGroup, settings, 'metric-order', ['cpu', 'mem', 'swap', 'igpu', 'dgpu', 'network', 'disk']);
+        this._addBoundSwitch(loadsGroup, settings, 'compact-metrics', 'Compact metrics', 'Reduce panel spacing when many metrics are enabled.');
         loadsPage.add(loadsGroup);
 
         const deviceGroup = new Adw.PreferencesGroup({
@@ -210,6 +199,12 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             description: 'Automatic aggregates physical network interfaces and avoids double-counting virtual bridges.',
         });
         this._addDeviceRow(networkGroup, settings, 'network-interface', 'Network interface', this._getNetworkChoices());
+        const networkMode = new Adw.ComboRow({title: _('Automatic network mode'),
+            subtitle: _('Physical devices, or independent bridge/VLAN endpoints. Select a VPN interface explicitly to measure VPN traffic.'),
+            model: Gtk.StringList.new([_('Physical devices'), _('Aggregate endpoints')]),
+            selected: settings.get_string('network-mode') === 'aggregate' ? 1 : 0});
+        networkMode.connect('notify::selected', () => settings.set_string('network-mode', networkMode.selected ? 'aggregate' : 'physical'));
+        networkGroup.add(networkMode);
         loadsPage.add(networkGroup);
 
         const performanceGroup = new Adw.PreferencesGroup({
@@ -275,12 +270,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             if (criticalSpin.get_value_as_int() <= warningSpin.get_value_as_int())
                 warningSpin.set_value(Math.max(30, criticalSpin.get_value_as_int() - 5));
         });
-        const tempOrderRow = new Adw.EntryRow({
-            title: 'Temperature order',
-            text: settings.get_string('temp-order'),
-        });
-        tempOrderRow.connect('changed', row => settings.set_string('temp-order', row.text));
-        tempsGroup.add(tempOrderRow);
+        this._addOrderRows(tempsGroup, settings, 'temp-order', ['cpu', 'igpu', 'dgpu']);
         tempsPage.add(tempsGroup);
 
         const awakePage = new Adw.PreferencesPage({
@@ -392,7 +382,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             title: 'Detected Hardware',
             description: 'Read-only local information used by the extension. No data is transmitted.',
         });
-        for (const [title, subtitle] of this._getDiagnostics())
+        for (const [title, subtitle] of this._getDiagnostics(settings))
             diagnosticsGroup.add(new Adw.ActionRow({title, subtitle}));
         diagnosticsPage.add(diagnosticsGroup);
 
@@ -475,6 +465,32 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         this._localizeWidgetTree(window, _);
     }
 
+    _addOrderRows(group, settings, key, allowed) {
+        const groupRows = [];
+        const rebuild = () => {
+            for (const row of groupRows) group.remove(row);
+            groupRows.length = 0;
+            const order = [...new Set([...settings.get_string(key).split(',').map(id => id.trim()), ...allowed])]
+                .filter(id => allowed.includes(id));
+            order.forEach((id, index) => {
+                const row = new Adw.ActionRow({title: this.gettext(id.toUpperCase())});
+                for (const [delta, icon, title] of [[-1, 'go-up-symbolic', 'Move up'], [1, 'go-down-symbolic', 'Move down']]) {
+                    const button = new Gtk.Button({icon_name: icon, tooltip_text: this.gettext(title),
+                        valign: Gtk.Align.CENTER, sensitive: index + delta >= 0 && index + delta < order.length});
+                    button.connect('clicked', () => {
+                        const next = [...order];
+                        [next[index], next[index + delta]] = [next[index + delta], next[index]];
+                        settings.set_string(key, next.join(','));
+                    });
+                    row.add_suffix(button);
+                }
+                group.add(row); groupRows.push(row);
+            });
+        };
+        settings.connect(`changed::${key}`, rebuild);
+        rebuild();
+    }
+
     _addBoundSwitch(group, settings, key, title, subtitle) {
         const row = new Adw.SwitchRow({
             title: this.gettext(title),
@@ -555,6 +571,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
 
     _addDeviceRow(group, settings, key, title, choices) {
         const current = settings.get_string(key);
+        if (!choices.some(choice => choice.id === current))
+            choices = [...choices, {id: current, label: `${current} (unavailable)`}];
         const selected = Math.max(0, choices.findIndex(choice => choice.id === current));
         const row = new Adw.ComboRow({
             title: this.gettext(title),
@@ -568,7 +586,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         group.add(row);
     }
 
-    _getDiagnostics() {
+    _getDiagnostics(settings) {
         const gpuNames = this._getGpuChoices().slice(1).map(choice => choice.label);
         const hwmon = [];
         try {
@@ -591,7 +609,24 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         } catch (_error) {
             // Report the empty state below.
         }
+        const read = path => {
+            try { return new TextDecoder().decode(Gio.File.new_for_path(path).load_contents(null)[1]).trim(); }
+            catch (error) { return `Unavailable: ${error.message}`; }
+        };
+        const sources = [];
+        for (const choice of this._getGpuChoices().slice(1)) {
+            const base = `/sys/class/drm/${choice.id}/device`;
+            sources.push([choice.id, `${base}; vendor ${read(`${base}/vendor`)}; device ${read(`${base}/device`)}`]);
+        }
+        const selected = settings.get_string('dgpu-device');
         return [
+            ['Selected GPU', selected === 'auto' ? 'Automatic selection' :
+                this._getGpuChoices().some(choice => choice.id === selected) ? selected : `${selected}: device is not present`],
+            ['NVIDIA selection', `Index ${settings.get_uint('nvidia-index')}; unavailable indices are not replaced by GPU 0. Dormant drivers are not probed.`],
+            ['CPU readings', '/sys/class/hwmon: coretemp/k10temp/zenpower labeled sensors; no unrelated storage-temperature fallback.'],
+            ['Disk source', '/proc/diskstats: whole physical disks only; RAID/device-mapper/zram and partitions excluded.'],
+            ['Network source', `/proc/net/dev; ${settings.get_string('network-interface')}; mode ${settings.get_string('network-mode')}`],
+            ...sources,
             ['DRM devices', gpuNames.length ? gpuNames.join(', ') : 'No DRM cards detected'],
             ['Hardware monitors', hwmon.length ? [...new Set(hwmon)].join(', ') : 'No hwmon devices detected'],
             ['NVIDIA metrics', GLib.find_program_in_path('nvidia-smi') ? 'nvidia-smi is installed' : 'nvidia-smi is not installed'],

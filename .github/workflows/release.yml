@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install validation and packaging tools
-        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils p7zip-full ripgrep
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin libxml2-utils p7zip-full ripgrep gettext
 
       - name: Read extension metadata
         id: meta
@@ -33,10 +33,12 @@ jobs:
             git checkout --detach "$VERSION_TAG"
           fi
           VERSION_TEXT="${VERSION_TAG#v}"
+          MINOR="$(cut -d. -f2 <<< "$VERSION_TEXT")"
           test "$VERSION_TEXT" = "$(tr -d '[:space:]' < VERSION)"
           echo "uuid=${UUID}" >> "$GITHUB_OUTPUT"
           echo "version_tag=${VERSION_TAG}" >> "$GITHUB_OUTPUT"
           echo "version_text=${VERSION_TEXT}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$((MINOR % 2))" >> "$GITHUB_OUTPUT"
 
       - name: Validate and build extension zip
         run: |
@@ -63,7 +65,7 @@ jobs:
           tag_name: ${{ steps.meta.outputs.version_tag }}
           name: ${{ steps.meta.outputs.version_tag }}
           body_path: dist/release-notes.md
-          prerelease: ${{ endsWith(steps.meta.outputs.version_tag, 'su') }}
+          prerelease: ${{ steps.meta.outputs.prerelease == '1' }}
           files: |
             dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.zip
             dist/${{ steps.meta.outputs.uuid }}-${{ steps.meta.outputs.version_tag }}.shell-extension.sha256

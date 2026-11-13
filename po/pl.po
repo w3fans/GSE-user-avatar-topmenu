@@ -1,0 +1,61 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Project-Id-Version: user-avatar-topmenu\n"
+"PO-Revision-Date: 2026-11-13 00:00+0100\n"
+"Last-Translator: Project maintainers\n"
+"Language-Team: Polish\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "General"
+msgstr "Ogólne"
+
+msgid "System Loads"
+msgstr "Obciążenie systemu"
+
+msgid "Keep Awake"
+msgstr "Podtrzymanie aktywności"
+
+msgid "Desktop"
+msgstr "Pulpit"
+
+msgid "Temperatures"
+msgstr "Temperatury"
+
+msgid "Autohide"
+msgstr "Automatyczne ukrywanie"
+
+msgid "Diagnostics"
+msgstr "Diagnostyka"
+
+msgid "About"
+msgstr "O programie"
+
+msgid "Open Preferences"
+msgstr "Otwórz ustawienia"
+
+msgid "Lock Screen"
+msgstr "Zablokuj ekran"
+
+msgid "Log Out"
+msgstr "Wyloguj"
+
+msgid "Show in top bar"
+msgstr "Pokaż na górnym panelu"
+
+msgid "Show computer name"
+msgstr "Pokaż nazwę komputera"
+
+msgid "Display name"
+msgstr "Wyświetlana nazwa"
+
+msgid "Display avatar"
+msgstr "Pokaż awatar"
+
+msgid "Move up"
+msgstr "Przesuń w górę"
+
+msgid "Move down"
+msgstr "Przesuń w dół"

@@ -1,0 +1,61 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: sl\n"
+"MIME-Version: 1.0\n"
+"Project-Id-Version: user-avatar-topmenu\n"
+"PO-Revision-Date: 2026-11-13 00:00+0100\n"
+"Last-Translator: Project maintainers\n"
+"Language-Team: Slovenian\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "General"
+msgstr "Splošno"
+
+msgid "System Loads"
+msgstr "Sistemska obremenitev"
+
+msgid "Keep Awake"
+msgstr "Ohrani budnost"
+
+msgid "Desktop"
+msgstr "Namizje"
+
+msgid "Temperatures"
+msgstr "Temperature"
+
+msgid "Autohide"
+msgstr "Samodejno skrivanje"
+
+msgid "Diagnostics"
+msgstr "Diagnostika"
+
+msgid "About"
+msgstr "O programu"
+
+msgid "Open Preferences"
+msgstr "Odpri nastavitve"
+
+msgid "Lock Screen"
+msgstr "Zakleni zaslon"
+
+msgid "Log Out"
+msgstr "Odjava"
+
+msgid "Show in top bar"
+msgstr "Prikaži v zgornji vrstici"
+
+msgid "Show computer name"
+msgstr "Prikaži ime računalnika"
+
+msgid "Display name"
+msgstr "Prikaži ime"
+
+msgid "Display avatar"
+msgstr "Prikaži avatar"
+
+msgid "Move up"
+msgstr "Premakni gor"
+
+msgid "Move down"
+msgstr "Premakni dol"

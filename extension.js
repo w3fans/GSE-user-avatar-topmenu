@@ -12,7 +12,8 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 import * as SystemActions from 'resource:///org/gnome/shell/misc/systemActions.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {cancelPendingCommands, dbusCallAsync, runCommandAsync} from './lib/io.js';
+import {cancelPendingCommands, dbusCallAsync, runCommandAsync, setCommandCancellable} from './lib/io.js';
+import {InhibitorController} from './lib/inhibitor.js';
 import {
     addKeepAwakeControls,
     addSharedMenuSections,
@@ -83,10 +84,16 @@ const gpuNameCache = new Map();
 const textFileCache = new Map();
 const directoryCache = new Map();
 let systemOnBattery = false;
+let ioScope = null;
 
 function readTextFile(path) {
+    const scope = ioScope;
+    if (!scope)
+        return null;
     const now = GLib.get_monotonic_time();
     const cached = textFileCache.get(path);
+    if (!cached && textFileCache.size >= 512)
+        textFileCache.delete(textFileCache.keys().next().value);
 
     if (!cached || now - cached.timestamp > TEXT_FILE_CACHE_USEC) {
         const state = cached ?? {value: null, pending: false, timestamp: 0};
@@ -94,7 +101,7 @@ function readTextFile(path) {
 
         if (!state.pending) {
             state.pending = true;
-            Gio.File.new_for_path(path).load_contents_async(null, (file, result) => {
+            Gio.File.new_for_path(path).load_contents_async(scope, (file, result) => {
                 try {
                     const [ok, contents] = file.load_contents_finish(result);
                     state.value = ok ? new TextDecoder().decode(contents).trim() : null;
@@ -117,6 +124,11 @@ function readNumberFile(path) {
 }
 
 function listDirectory(path) {
+    const scope = ioScope;
+    if (!scope)
+        return [];
+    if (!directoryCache.has(path) && directoryCache.size >= 128)
+        directoryCache.delete(directoryCache.keys().next().value);
     const now = GLib.get_monotonic_time();
     const state = directoryCache.get(path) ?? {
         value: [],
@@ -131,11 +143,15 @@ function listDirectory(path) {
             'standard::name',
             Gio.FileQueryInfoFlags.NONE,
             GLib.PRIORITY_DEFAULT,
-            null,
+            scope,
             (source, result) => {
                 let enumerator;
                 try {
                     enumerator = source.enumerate_children_finish(result);
+                    if (scope !== ioScope) {
+                        enumerator.close_async(GLib.PRIORITY_DEFAULT, null, null);
+                        return;
+                    }
                 } catch (_error) {
                     state.value = [];
                     state.timestamp = GLib.get_monotonic_time();
@@ -145,10 +161,10 @@ function listDirectory(path) {
 
                 const names = [];
                 const readNextBatch = () => {
-                    enumerator.next_files_async(64, GLib.PRIORITY_DEFAULT, null, (current, nextResult) => {
+                    enumerator.next_files_async(64, GLib.PRIORITY_DEFAULT, scope, (current, nextResult) => {
                         try {
                             const infos = current.next_files_finish(nextResult);
-                            if (infos.length > 0) {
+                            if (infos.length > 0 && scope === ioScope) {
                                 names.push(...infos.map(info => info.get_name()));
                                 readNextBatch();
                                 return;
@@ -249,6 +265,7 @@ function formatMemoryHardwareModules(modules) {
 }
 
 function getMemoryHardwareInfo(cancellable = null) {
+    const scope = ioScope;
     const modules = [];
 
     for (const controller of listDirectory('/sys/devices/system/edac/mc').filter(name => /^mc\d+$/.test(name))) {
@@ -279,12 +296,14 @@ function getMemoryHardwareInfo(cancellable = null) {
         memoryHardwareCache.pending = true;
         runCommandAsync(['dmidecode', '--type', '17'], {timeoutMs: 3000, cancellable})
             .then(dmi => {
+                if (scope !== ioScope) return;
                 const dmiModules = parseDmiMemory(dmi);
                 memoryHardwareCache.value = dmiModules.length > 0
                     ? formatMemoryHardwareModules(dmiModules)
                     : 'RAM hardware inventory unavailable to this user';
             })
             .finally(() => {
+                if (scope !== ioScope) return;
                 memoryHardwareCache.timestamp = GLib.get_monotonic_time() / 1000;
                 memoryHardwareCache.pending = false;
             });
@@ -331,6 +350,7 @@ function getCpuModel() {
 }
 
 function getGpuDisplayName(device) {
+    const scope = ioScope;
     if (!device)
         return null;
 
@@ -340,6 +360,7 @@ function getGpuDisplayName(device) {
     gpuNameCache.set(device.path, device.name);
     runCommandAsync(['udevadm', 'info', '--query=property', `--path=${device.path}`], {timeoutMs: 2000})
         .then(properties => {
+            if (scope !== ioScope) return;
             const model = properties.match(/^ID_MODEL_FROM_DATABASE=(.+)$/m)?.[1] ??
                 properties.match(/^ID_MODEL=(.+)$/m)?.[1] ?? device.name;
             gpuNameCache.set(device.path, model);
@@ -464,10 +485,11 @@ function getGpuMetrics(type, previousStat = null, selected = 'auto', nvidiaIndex
 }
 
 function getNvidiaMetrics(index = 0) {
+    const scope = ioScope;
     const now = GLib.get_monotonic_time() / 1000;
 
     if (now - nvidiaMetricsCache.timestamp < nvidiaMetricsCache.ttl)
-        return nvidiaMetricsCache.values?.[index] ?? nvidiaMetricsCache.value;
+        return nvidiaMetricsCache.values?.[index] ?? null;
 
     // Never let polling initialize or probe a dormant NVIDIA driver. Calling
     // nvidia-smi too early can repeatedly trigger a failing modprobe on
@@ -496,6 +518,7 @@ function getNvidiaMetrics(index = 0) {
             '--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,name',
             '--format=csv,noheader,nounits',
         ], {timeoutMs: 3000}).then(stdout => {
+            if (scope !== ioScope) return;
             const gpus = stdout.split('\n').map(line => {
                 const fields = line.split(',').map(field => field.trim());
                 if (fields.length < 5)
@@ -516,6 +539,7 @@ function getNvidiaMetrics(index = 0) {
                 pending: false,
             };
         }).catch(() => {
+            if (scope !== ioScope) return;
             nvidiaMetricsCache = {
                 timestamp: GLib.get_monotonic_time() / 1000,
                 ttl: NVIDIA_FAILURE_CACHE_MS,
@@ -524,7 +548,7 @@ function getNvidiaMetrics(index = 0) {
             };
         });
     }
-    return nvidiaMetricsCache.values?.[index] ?? nvidiaMetricsCache.value;
+    return nvidiaMetricsCache.values?.[index] ?? null;
 }
 
 function getHwmonTemperature(devicePath) {
@@ -630,11 +654,12 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._previousDiskStat = null;
         this._loadItems = [];
         this._tempItems = [];
+        this._metricActors = new Map();
         this._box = new St.BoxLayout({
             style_class: 'user-topmenu-metrics-box',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._box.spacing = 12;
+        this._box.spacing = settings.get_boolean('compact-metrics') ? 4 : 12;
         this._box.connect('destroy', () => {
             this._box = null;
         });
@@ -653,15 +678,21 @@ class SystemMetricsButton extends PanelMenu.Button {
         Main.uiGroup.add_child(this._tooltip);
 
         this._settings.connectObject('changed', (_settings, key) => {
-            if (key === 'network-interface')
+            if (key === 'network-interface' || key === 'network-mode')
                 this._previousNetworkStat = null;
+            if (key === 'igpu-device' || key === 'dgpu-device' || key === 'nvidia-index')
+                this._previousGpuStats.clear();
+            if (key === 'compact-metrics') {
+                this._box.spacing = this._settings.get_boolean(key) ? 4 : 12;
+                this._render();
+            }
 
             if (LOAD_KEYS.includes(key) || key === 'loads-position') {
                 this._refreshLoads();
                 this._startLoadRefreshTimer();
             } else if (key === 'use-load-colors' || key === 'metric-order' ||
                 key === 'igpu-device' || key === 'dgpu-device' || key === 'nvidia-index' ||
-                key === 'network-interface') {
+                key === 'network-interface' || key === 'network-mode') {
                 this._refreshLoads();
             }
 
@@ -744,6 +775,7 @@ class SystemMetricsButton extends PanelMenu.Button {
         this._settings.disconnectObject(this);
 
         this._tooltip?.destroy();
+        this._metricActors.clear();
 
         super.destroy();
     }
@@ -785,8 +817,6 @@ class SystemMetricsButton extends PanelMenu.Button {
     _render() {
         if (!this._box)
             return;
-        this._hideTooltip();
-        this._box.destroy_all_children();
 
         const firstGroup = this._side === 'left'
             ? this._getCachedItemsForGroup('loads')
@@ -795,14 +825,31 @@ class SystemMetricsButton extends PanelMenu.Button {
             ? this._getCachedItemsForGroup('temps')
             : this._getCachedItemsForGroup('loads');
 
-        for (const item of firstGroup)
-            this._box.add_child(this._createMetricLabel(item));
-
-        if (firstGroup.length > 0 && secondGroup.length > 0)
-            this._box.add_child(new St.Widget({width: 8}));
-
-        for (const item of secondGroup)
-            this._box.add_child(this._createMetricLabel(item));
+        const items = [...firstGroup,
+            ...(firstGroup.length && secondGroup.length ? [{type: 'gap', id: 'gap'}] : []),
+            ...secondGroup];
+        const keys = new Set(items.map(item => `${item.type}:${item.id}`));
+        for (const [key, actor] of this._metricActors) {
+            if (!keys.has(key)) {
+                if (actor === this._tooltipActor)
+                    this._hideTooltip();
+                actor.destroy();
+                this._metricActors.delete(key);
+            }
+        }
+        items.forEach((item, index) => {
+            const key = `${item.type}:${item.id}`;
+            let actor = this._metricActors.get(key);
+            if (!actor) {
+                actor = item.type === 'gap' ? new St.Widget({width: 8}) : this._createMetricLabel(item);
+                this._metricActors.set(key, actor);
+                this._box.add_child(actor);
+            }
+            if (this._box.get_child_at_index(index) !== actor)
+                this._box.set_child_at_index(actor, index);
+            if (item.type !== 'gap')
+                this._updateMetric(actor, item);
+        });
 
         this.visible = firstGroup.length + secondGroup.length > 0;
     }
@@ -985,51 +1032,61 @@ class SystemMetricsButton extends PanelMenu.Button {
 
     _getNetworkItem() {
         const selected = this._settings.get_string('network-interface');
+        const mode = this._settings.get_string('network-mode');
         const interfaces = listDirectory('/sys/class/net');
         const ignored = selected === 'auto'
             ? interfaces.filter(name => name === 'lo' ||
-                !GLib.file_test(`/sys/class/net/${name}/device`, GLib.FileTest.EXISTS))
+                (mode === 'physical'
+                    ? !GLib.file_test(`/sys/class/net/${name}/device`, GLib.FileTest.EXISTS)
+                    : GLib.file_test(`/sys/class/net/${name}/master`, GLib.FileTest.EXISTS) ||
+                        listDirectory(`/sys/class/net/${name}`).some(entry => entry.startsWith('upper_')) ||
+                        (!GLib.file_test(`/sys/class/net/${name}/device`, GLib.FileTest.EXISTS) &&
+                            !listDirectory(`/sys/class/net/${name}`).some(entry => entry.startsWith('lower_')))))
             : interfaces.filter(name => name !== selected);
-        const counters = parseProcNetDev(readTextFile('/proc/net/dev'), ignored);
+        const contents = readTextFile('/proc/net/dev');
+        const counters = parseProcNetDev(contents, ignored);
+        const source = interfaces.filter(name => !ignored.includes(name)).sort().join(',');
         const now = GLib.get_monotonic_time();
         let rxRate = 0;
         let txRate = 0;
-        if (this._previousNetworkStat) {
+        if (contents !== null && this._previousNetworkStat?.source === source) {
             const seconds = (now - this._previousNetworkStat.time) / 1_000_000;
             if (seconds > 0) {
                 rxRate = Math.max(0, counters.rx - this._previousNetworkStat.rx) / seconds;
                 txRate = Math.max(0, counters.tx - this._previousNetworkStat.tx) / seconds;
             }
         }
-        this._previousNetworkStat = {...counters, time: now};
+        this._previousNetworkStat = contents === null ? null : {...counters, time: now, source};
         return {
             type: 'rate',
             id: 'network',
             name: 'NET',
-            value: `↓${formatBinaryBytes(rxRate, 1)}/s`,
+            value: contents === null ? '--' : `↓${formatBinaryBytes(rxRate, 1)}/s`,
             color: LOAD_COLORS.network,
             tooltip: `Network throughput (${selected === 'auto' ? 'physical interfaces' : selected})\nDownload ${formatBinaryBytes(rxRate, 1)}/s\nUpload ${formatBinaryBytes(txRate, 1)}/s`,
         };
     }
 
     _getDiskItem() {
-        const counters = parseProcDiskstats(readTextFile('/proc/diskstats'));
+        const contents = readTextFile('/proc/diskstats');
+        const counters = parseProcDiskstats(contents);
+        const source = listDirectory('/sys/class/block').sort().join(',');
         const now = GLib.get_monotonic_time();
         let readRate = 0;
         let writeRate = 0;
-        if (this._previousDiskStat) {
+        if (contents !== null && this._previousDiskStat?.source === source) {
             const seconds = (now - this._previousDiskStat.time) / 1_000_000;
             if (seconds > 0) {
                 readRate = Math.max(0, counters.readBytes - this._previousDiskStat.readBytes) / seconds;
                 writeRate = Math.max(0, counters.writeBytes - this._previousDiskStat.writeBytes) / seconds;
             }
         }
-        this._previousDiskStat = {...counters, time: now};
+        this._previousDiskStat = contents === null ? null : {...counters, time: now, source};
         return {
             type: 'rate',
             id: 'disk',
             name: 'DISK',
-            value: `R ${formatBinaryBytes(readRate, 1)}/s`,
+            value: contents === null ? '--' : `R ${formatBinaryBytes(readRate, 1)}/s`,
             color: LOAD_COLORS.disk,
             tooltip: `Disk activity\nRead ${formatBinaryBytes(readRate, 1)}/s\nWrite ${formatBinaryBytes(writeRate, 1)}/s`,
         };
@@ -1041,16 +1098,17 @@ class SystemMetricsButton extends PanelMenu.Button {
             : item.type === 'rate'
                 ? this._createRateMetric(item)
                 : this._createLoadMetric(item);
+        actor._metricItem = item;
 
         actor.connectObject(
             'enter-event', () => {
-                this._showTooltip(actor, item);
+                this._showTooltip(actor, actor._metricItem);
             },
             'leave-event', () => {
                 this._hideTooltip();
             },
             'key-focus-in', () => {
-                this._showTooltip(actor, item);
+                this._showTooltip(actor, actor._metricItem);
             },
             'key-focus-out', () => {
                 this._hideTooltip();
@@ -1070,6 +1128,26 @@ class SystemMetricsButton extends PanelMenu.Button {
             this
         );
         return actor;
+    }
+
+    _updateMetric(actor, item) {
+        actor._metricItem = item;
+        const color = this._getMetricColor(item);
+        for (const widget of actor._colored ?? [])
+            widget.set_style(`color: ${color};`);
+        if (actor._fill) {
+            const height = item.percent === null ? 2 : Math.max(1, Math.round(item.percent / 100 * 18));
+            actor._fill.set_height(height);
+            actor._spacer.set_height(18 - height);
+            actor._fill.set_style(`background-color: ${color};`);
+        }
+        const value = item.type === 'temp' ? this._formatTemperature(item.temp)
+            : item.type === 'rate' ? item.value : formatPercent(item.percent);
+        if (actor._valueLabel)
+            actor._valueLabel.text = value;
+        actor.accessible_name = `${item.name} ${value}`;
+        if (this._tooltipActor === actor)
+            this._showTooltip(actor, item);
     }
 
     _createLoadMetric(item) {
@@ -1125,6 +1203,9 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         metric.add_child(iconBox);
         metric.add_child(column);
+        metric._fill = fill;
+        metric._spacer = spacer;
+        metric._colored = iconBox.get_children();
         metric.accessible_name = `${item.name} ${formatPercent(item.percent)}`;
         return metric;
     }
@@ -1180,6 +1261,8 @@ class SystemMetricsButton extends PanelMenu.Button {
 
         box.add_child(icon);
         box.add_child(label);
+        box._valueLabel = label;
+        box._colored = [icon, label];
         box.accessible_name = `${item.name} ${item.temp === null ? 'temperature unavailable' : this._formatTemperature(item.temp)}`;
         return box;
     }
@@ -1204,6 +1287,8 @@ class SystemMetricsButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         }));
         box.accessible_name = `${item.name} ${item.value}`;
+        box._colored = box.get_children();
+        box._valueLabel = box.get_child_at_index(1);
         return box;
     }
 
@@ -1248,6 +1333,7 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _showTooltip(actor, item) {
+        this._tooltipActor = actor;
         if (!this._tooltip)
             return;
 
@@ -1306,6 +1392,7 @@ class SystemMetricsButton extends PanelMenu.Button {
     }
 
     _hideTooltip() {
+        this._tooltipActor = null;
         if (this._tooltip)
             this._tooltip.visible = false;
     }
@@ -1728,7 +1815,19 @@ export default class UsernameAvatarExtension extends Extension {
         configureMenuTranslation(this.gettext.bind(this));
         this._settings = this.getSettings();
         this._cancellable = new Gio.Cancellable();
+        ioScope = this._cancellable;
+        setCommandCancellable(ioScope);
+        this._idleInhibitor = new InhibitorController(
+            async () => (await dbusCallAsync(Gio.DBus.session, 'org.gnome.SessionManager',
+                '/org/gnome/SessionManager', 'org.gnome.SessionManager', 'Inhibit',
+                new GLib.Variant('(susu)', ['Username Avatar Top Menu', 0, 'Keep awake enabled', INHIBIT_IDLE_FLAG]),
+                new GLib.VariantType('(u)'), 3000)).recursiveUnpack()[0],
+            cookie => dbusCallAsync(Gio.DBus.session, 'org.gnome.SessionManager',
+                '/org/gnome/SessionManager', 'org.gnome.SessionManager', 'Uninhibit',
+                new GLib.Variant('(u)', [cookie]), null, 3000)
+        );
         this._mediaPlaying = false;
+        this._automaticRefreshPending = false;
         this._restoreKeepAwakeTimer();
         this._settings.connectObject('changed', (_settings, key) => {
             if (key === 'keep-awake' || key === 'keep-awake-fullscreen' ||
@@ -1785,6 +1884,8 @@ export default class UsernameAvatarExtension extends Extension {
             }
             this._syncFullscreenPanelVisibility();
         }, this);
+        Main.overview.connectObject('showing', () => this._syncFullscreenPanelVisibility(),
+            'hidden', () => this._syncFullscreenPanelVisibility(), this);
         this._startKeepAwakeRefreshTimer();
         this._setupPowerMonitor();
         this._startUserMonitors();
@@ -1799,19 +1900,23 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     disable() {
+        ioScope = null;
+        setCommandCancellable(null);
         this._cancellable?.cancel();
         cancelPendingCommands();
         this._disconnectFocusWindowSignals();
         this._settings?.disconnectObject(this);
         global.display.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);
+        Main.overview.disconnectObject(this);
 
         if (this._keepAwakeTimeoutId) {
             GLib.Source.remove(this._keepAwakeTimeoutId);
             this._keepAwakeTimeoutId = null;
         }
 
-        this._releaseInhibitor();
+        this._idleInhibitor.destroy();
+        this._idleInhibitor = null;
         this._destroyPanelRevealActor();
         this._setPanelAutohide(false);
         this._removeMetricsButtons();
@@ -1873,6 +1978,7 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _setupPowerMonitor() {
+        const lifetime = this._cancellable;
         Gio.DBusProxy.new_for_bus(
             Gio.BusType.SYSTEM,
             Gio.DBusProxyFlags.NONE,
@@ -1882,10 +1988,10 @@ export default class UsernameAvatarExtension extends Extension {
             'org.freedesktop.UPower',
             this._cancellable,
             (source, result) => {
-                if (!this._settings)
-                    return;
                 try {
-                    this._powerProxy = Gio.DBusProxy.new_for_bus_finish(result);
+                    const proxy = Gio.DBusProxy.new_for_bus_finish(result);
+                    if (lifetime !== this._cancellable) return;
+                    this._powerProxy = proxy;
                     const sync = () => {
                         systemOnBattery = this._powerProxy.get_cached_property('OnBattery')?.unpack() ?? false;
                         this._leftMetrics?.refreshTimerConfiguration();
@@ -1894,7 +2000,8 @@ export default class UsernameAvatarExtension extends Extension {
                     this._powerProxy.connectObject('g-properties-changed', sync, this);
                     sync();
                 } catch (_error) {
-                    systemOnBattery = false;
+                    if (lifetime === this._cancellable)
+                        systemOnBattery = false;
                 }
             }
         );
@@ -1962,10 +2069,7 @@ export default class UsernameAvatarExtension extends Extension {
         const active = this._shouldKeepAwake();
         this._button?.setKeepAwakeEffective(active);
 
-        if (active)
-            this._inhibitIdle();
-        else
-            this._releaseInhibitor();
+        this._idleInhibitor?.setDesired(active);
     }
 
     _shouldKeepAwake() {
@@ -1983,14 +2087,16 @@ export default class UsernameAvatarExtension extends Extension {
             return;
 
         this._automaticRefreshPending = true;
+        const lifetime = this._cancellable;
         try {
             const watchMedia = this._settings.get_boolean('keep-awake-media');
-            this._mediaPlaying = watchMedia
+            const playing = watchMedia
                 ? await isMediaPlaying(this._cancellable)
                 : false;
 
-            if (!this._settings)
+            if (!this._settings || lifetime !== this._cancellable)
                 return;
+            this._mediaPlaying = playing;
 
             if (this._settings.get_boolean('keep-awake-timer-active') &&
                 !this._isKeepAwakeTimerActive())
@@ -1999,7 +2105,8 @@ export default class UsernameAvatarExtension extends Extension {
             this._syncInhibitor();
             this._refreshQuickSettingsMenu();
         } finally {
-            this._automaticRefreshPending = false;
+            if (lifetime === this._cancellable)
+                this._automaticRefreshPending = false;
         }
     }
 
@@ -2044,68 +2151,6 @@ export default class UsernameAvatarExtension extends Extension {
         );
     }
 
-    async _inhibitIdle() {
-        if (this._inhibitCookie || this._inhibitPending)
-            return;
-
-        if ((this._inhibitRetryAt ?? 0) > GLib.get_monotonic_time())
-            return;
-
-        this._inhibitPending = true;
-        try {
-            const result = await dbusCallAsync(
-                Gio.DBus.session,
-                'org.gnome.SessionManager',
-                '/org/gnome/SessionManager',
-                'org.gnome.SessionManager',
-                'Inhibit',
-                new GLib.Variant('(susu)', [
-                    'Username Avatar Top Menu',
-                    0,
-                    'Keep awake enabled',
-                    INHIBIT_IDLE_FLAG,
-                ]),
-                new GLib.VariantType('(u)'),
-                3000
-            );
-            this._inhibitCookie = result.recursiveUnpack()[0];
-            if (!this._settings || !this._shouldKeepAwake())
-                this._releaseInhibitor();
-        } catch (error) {
-            if (error.message.includes('org.freedesktop.DBus.Error.ServiceUnknown'))
-                console.debug(`SessionManager unavailable; keep-awake deferred: ${error.message}`);
-            else
-                console.error(`Failed to inhibit idle: ${error.message}`);
-            this._inhibitRetryAt = GLib.get_monotonic_time() + 60 * 1_000_000;
-        } finally {
-            this._inhibitPending = false;
-        }
-    }
-
-    async _releaseInhibitor() {
-        if (!this._inhibitCookie || this._uninhibitPending)
-            return;
-
-        const cookie = this._inhibitCookie;
-        this._inhibitCookie = null;
-        this._uninhibitPending = true;
-        try {
-            await dbusCallAsync(
-                Gio.DBus.session,
-                'org.gnome.SessionManager',
-                '/org/gnome/SessionManager',
-                'org.gnome.SessionManager',
-                'Uninhibit',
-                new GLib.Variant('(u)', [cookie]),
-                null,
-                3000
-            );
-        } catch (error) {
-            console.error(`Failed to release idle inhibitor: ${error.message}`);
-        } finally {
-            this._uninhibitPending = false;
-        }
-    }
 
     _getDisplayName() {
         const realName = GLib.get_real_name();
@@ -2166,9 +2211,13 @@ export default class UsernameAvatarExtension extends Extension {
             maximized: this._focusWindow.is_maximized?.() ?? false,
             monitor: this._focusWindow.get_monitor?.(),
             y: frameRect?.y ?? Number.MAX_SAFE_INTEGER,
+            x: frameRect?.x,
+            width: frameRect?.width,
         } : null, {
             index: global.display.get_primary_monitor(),
             y: primary.y,
+            x: primary.x,
+            width: primary.width,
             panelHeight: Main.layoutManager.panelBox.height,
         });
 
@@ -2176,51 +2225,42 @@ export default class UsernameAvatarExtension extends Extension {
     }
 
     _setPanelAutohide(hidden) {
-        const panelBox = Main.layoutManager.panelBox;
-
-        if (!panelBox)
-            return;
-
-        if (hidden) {
-            if (this._panelAutohideActive) {
-                if (!this._panelTemporarilyRevealed)
-                    return;
-                this._panelTemporarilyRevealed = false;
-            } else {
-                if (!panelBox.visible)
-                    return;
-                this._panelAutohideActive = true;
-                if (!this._panelUntracked) {
-                    Main.layoutManager.untrackChrome(panelBox);
-                    this._panelUntracked = true;
-                }
+        const panel = Main.layoutManager.panelBox;
+        if (!panel) return;
+        if (!hidden) {
+            if (this._panelOriginal) {
+                panel.remove_transition('translation-y');
+                if (panel.translation_y === this._panelOwnedTranslation)
+                    panel.translation_y = this._panelOriginal.y;
+                panel.track_hover = this._panelOriginal.trackHover;
+                panel.disconnectObject(this);
+                this._panelOriginal = null;
             }
-
-            this._ensurePanelRevealActor();
-            panelBox.ease({
-                translation_y: -panelBox.height,
-                duration: 180,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            });
-        } else {
-            if (!this._panelAutohideActive && !this._panelUntracked)
-                return;
-
             this._panelAutohideActive = false;
-            this._panelTemporarilyRevealed = false;
-            panelBox.ease({
-                translation_y: 0,
-                duration: 150,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            });
             this._destroyPanelRevealActor();
-
-            if (this._panelUntracked) {
-                Main.layoutManager.trackChrome(panelBox, {affectsStruts: true});
-                this._panelUntracked = false;
-            }
+            return;
         }
+        if (!this._panelOriginal) {
+            if (!panel.visible) return;
+            this._panelOriginal = {y: panel.translation_y, trackHover: panel.track_hover};
+            panel.track_hover = true;
+            panel.connectObject('notify::hover', () => this._schedulePanelHide(), this);
+        }
+        this._panelAutohideActive = true;
+        this._ensurePanelRevealActor();
+        const reveal = this._panelTemporarilyRevealed || panel.hover || Main.overview.visible;
+        this._panelOwnedTranslation = this._panelOriginal.y + (reveal ? 0 : -panel.height);
+        panel.translation_y = this._panelOwnedTranslation;
+    }
 
+    _schedulePanelHide() {
+        if (this._panelRevealTimeoutId) GLib.Source.remove(this._panelRevealTimeoutId);
+        this._panelRevealTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._panelRevealTimeoutId = null;
+            this._panelTemporarilyRevealed = false;
+            this._syncFullscreenPanelVisibility();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _ensurePanelRevealActor() {
@@ -2238,29 +2278,18 @@ export default class UsernameAvatarExtension extends Extension {
         this._panelRevealActor.set_position(monitor.x, monitor.y);
         this._panelRevealActor.set_size(monitor.width, 3);
         this._panelRevealActor.connectObject('enter-event', () => {
-            const panelBox = Main.layoutManager.panelBox;
             this._panelTemporarilyRevealed = true;
-            panelBox.ease({
-                translation_y: 0,
-                duration: 150,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            });
-            if (this._panelRevealTimeoutId)
+            if (this._panelRevealTimeoutId) {
                 GLib.Source.remove(this._panelRevealTimeoutId);
-            this._panelRevealTimeoutId = GLib.timeout_add(
-                GLib.PRIORITY_DEFAULT,
-                1800,
-                () => {
-                    this._panelRevealTimeoutId = null;
-                    this._syncFullscreenPanelVisibility();
-                    return GLib.SOURCE_REMOVE;
-                }
-            );
-        }, this);
+                this._panelRevealTimeoutId = null;
+            }
+            this._syncFullscreenPanelVisibility();
+        }, 'leave-event', () => this._schedulePanelHide(), this);
         Main.uiGroup.add_child(this._panelRevealActor);
     }
 
     _destroyPanelRevealActor() {
+        this._panelTemporarilyRevealed = false;
         if (this._panelRevealTimeoutId) {
             GLib.Source.remove(this._panelRevealTimeoutId);
             this._panelRevealTimeoutId = null;

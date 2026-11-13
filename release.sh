@@ -94,7 +94,7 @@ po/update-pot.sh
 git add \
     .github/workflows/release.yml .github/workflows/ci.yml \
     CHANGELOG.md README.md TESTING.md VERSION metadata.json extension.js prefs.js stylesheet.css \
-    schemas package-files.txt package.json lib po tests \
+    schemas package-files.txt package.json lib po locale tests \
     build validate.sh ego-check.sh build-release-zips.sh release.sh tools/release-notes.mjs \
     metric-*-symbolic.svg
 git commit -m "Release ${tag}"

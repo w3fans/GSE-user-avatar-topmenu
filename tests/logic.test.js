@@ -27,6 +27,19 @@ test('calculates CPU usage from deltas', () => {
     assert.equal(calculateCpuUsage(null, {idle: 1, total: 2}), null);
 });
 
+test('disk totals exclude RAID, device mapper, zram and partitions over physical members', () => {
+    const line = name => `8 0 ${name} 1 0 10 0 1 0 20 0 0 0 0`;
+    const contents = ['sda', 'sda1', 'md0', 'dm-0', 'zram0', 'nvme0n1', 'nvme0n1p1', 'mmcblk0', 'mmcblk0p1'].map(line).join('\n');
+    assert.deepEqual(parseProcDiskstats(contents), {readBytes: 3 * 10 * 512, writeBytes: 3 * 20 * 512});
+    assert.equal(calculateCpuUsage({idle: 20, total: 100}, {idle: 10, total: 50}), null);
+});
+
+test('touching a panel requires horizontal intersection, including negative monitor origins', () => {
+    const monitor = {index: 0, x: -1920, y: -100, width: 1920, panelHeight: 30};
+    assert.equal(shouldHidePanel({touching: true}, {monitor: 0, x: 200, width: 100, y: -100}, monitor), false);
+    assert.equal(shouldHidePanel({touching: true}, {monitor: 0, x: -1500, width: 100, y: -100}, monitor), true);
+});
+
 test('normalizes nanosecond DRM busy counters against GLib microseconds', () => {
     assert.equal(calculateEngineUsage(
         {busy: 0, time: 1_000_000},
