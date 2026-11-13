@@ -61,3 +61,20 @@ test('1000 metric samples retain actor identity and focus; removals destroy only
     view.items = []; render.call(view);
     assert.equal(destroyed, 1);
 });
+
+test('autohide preserves chrome ownership and restores original translation and hover policy', () => {
+    const source = fs.readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
+    const method = source.slice(source.indexOf('    _setPanelAutohide(hidden)'), source.indexOf('    _schedulePanelHide()'));
+    const panel = {translation_y: 17, height: 30, visible: true, track_hover: false, hover: false,
+        connectObject() {}, disconnectObject() {}, remove_transition() {}};
+    const hide = new Function('Main', `return ${method.trim().replace('_setPanelAutohide(hidden)', 'function(hidden)')};`)(
+        {layoutManager: {panelBox: panel}, overview: {visible: false}});
+    const owner = {_ensurePanelRevealActor() {}, _destroyPanelRevealActor() { this._panelTemporarilyRevealed = false; }};
+    hide.call(owner, true); assert.equal(panel.translation_y, -13);
+    panel.hover = true; hide.call(owner, true); assert.equal(panel.translation_y, 17);
+    panel.hover = false; hide.call(owner, true); assert.equal(panel.translation_y, -13);
+    hide.call(owner, false); assert.equal(panel.translation_y, 17); assert.equal(panel.track_hover, false);
+    hide.call(owner, true); panel.translation_y = 9; hide.call(owner, false);
+    assert.equal(panel.translation_y, 9);
+    assert.equal(panel.visible, true);
+});

@@ -27,6 +27,7 @@ import {
     calculateEngineUsage,
     calculateMemoryUsage,
     clampPercent,
+    counterRate,
     formatBinaryBytes,
     formatTemperature as formatMetricTemperature,
     getTemperatureColor,
@@ -1052,8 +1053,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (contents !== null && this._previousNetworkStat?.source === source) {
             const seconds = (now - this._previousNetworkStat.time) / 1_000_000;
             if (seconds > 0) {
-                rxRate = Math.max(0, counters.rx - this._previousNetworkStat.rx) / seconds;
-                txRate = Math.max(0, counters.tx - this._previousNetworkStat.tx) / seconds;
+                rxRate = counterRate(this._previousNetworkStat.rx, counters.rx, seconds);
+                txRate = counterRate(this._previousNetworkStat.tx, counters.tx, seconds);
             }
         }
         this._previousNetworkStat = contents === null ? null : {...counters, time: now, source};
@@ -1077,8 +1078,8 @@ class SystemMetricsButton extends PanelMenu.Button {
         if (contents !== null && this._previousDiskStat?.source === source) {
             const seconds = (now - this._previousDiskStat.time) / 1_000_000;
             if (seconds > 0) {
-                readRate = Math.max(0, counters.readBytes - this._previousDiskStat.readBytes) / seconds;
-                writeRate = Math.max(0, counters.writeBytes - this._previousDiskStat.writeBytes) / seconds;
+                readRate = counterRate(this._previousDiskStat.readBytes, counters.readBytes, seconds);
+                writeRate = counterRate(this._previousDiskStat.writeBytes, counters.writeBytes, seconds);
             }
         }
         this._previousDiskStat = contents === null ? null : {...counters, time: now, source};

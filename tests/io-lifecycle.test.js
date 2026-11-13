@@ -20,3 +20,21 @@ test('100 subprocess lifetime cancellations remove every timeout before late com
         assert.equal(await result, '');
     }
 });
+
+test('late file completion from an old enable cannot replace a new lifetime sample', () => {
+    const source = fs.readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
+    const method = source.slice(source.indexOf('function readTextFile(path)'), source.indexOf('function readNumberFile(path)'));
+    const callbacks = [];
+    const cache = new Map();
+    const reader = new Function('Gio', 'GLib', 'textFileCache', `let ioScope = {}; const TEXT_FILE_CACHE_USEC = 250000; ${method}
+        return {readTextFile, next() {ioScope = {}; textFileCache.clear();}};`)(
+        {File: {new_for_path() { return {load_contents_async(cancellable, callback) {callbacks.push(callback);}}; }}},
+        {get_monotonic_time: () => 1000000}, cache);
+    const result = text => ({load_contents_finish() { return [true, Buffer.from(text)]; }});
+    reader.readTextFile('/test');
+    reader.next();
+    reader.readTextFile('/test');
+    callbacks[1](result('new'), null);
+    callbacks[0](result('old'), null);
+    assert.equal(reader.readTextFile('/test'), 'new');
+});

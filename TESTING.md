@@ -1,5 +1,16 @@
 # Testing and Submission
 
+0.8.10 adds transport-failure inhibitor tests, late-I/O generation tests, 100
+subprocess cancellation cycles, 1,000 persistent-actor samples, panel translation
+restoration, and layered-disk/negative-coordinate fixtures. An isolated GNOME
+51.1 run with all metrics enabled completed 100 disable/enable cycles and
+remained ACTIVE. Physical GNOME 45–50 and multi-monitor/other-extension tests
+are not claimed. Do not restart the user's real Shell to run these checks.
+
+The translations are intentionally partial core UI catalogs; check msgfmt output
+and English fallback when adding strings. SU hardware tests require the exact
+model's driver/helper; preserve the existing keyboard inactivity/fade tests.
+
 Run the complete local validation and deterministic package build:
 
 ```bash

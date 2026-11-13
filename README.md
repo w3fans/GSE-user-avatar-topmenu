@@ -5,6 +5,24 @@ It can also show the computer name, hardware-style system usage and temperature 
 
 ## Features
 
+Version 0.8.10 keeps metric actors and keyboard focus stable during sampling,
+serializes session inhibition, and cancels hardware I/O per enable lifetime.
+Metric ordering uses accessible up/down buttons; compact spacing and automatic
+physical/bridge endpoint network modes are available in Preferences. Select a
+VPN interface explicitly to measure its traffic. Disk totals count physical
+whole disks rather than RAID/device-mapper layers and partitions.
+
+Autohide translates the panel without changing Shell's chrome registration or
+strut policy. This deliberately retains Shell's reserved panel area; it avoids
+taking ownership of another extension's work-area policy. Hover holds reveal
+open, and disable restores the panel translation owned by this extension.
+
+Slovenian and Polish core UI catalogs are shipped. Untranslated strings use
+English. Run `bash po/compile.sh` (gettext/msgfmt required) after editing PO
+files; validation compiles/checks catalogs and packaging includes the MO files.
+Public releases can be built from a fresh clone. The maintainer's local personal
+builder is optional; when present, the established SU-first publication applies.
+
 Supports GNOME Shell 45–51, including Fedora 45's GNOME 51. The private SU
 companion also offers keyboard backlight inactivity presets in Hardware
 Preferences; keyboard, touchpad, or mouse activity restores the previous preset.

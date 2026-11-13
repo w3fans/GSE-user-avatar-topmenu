@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
     calculateCpuUsage,
+    counterRate,
     calculateEngineUsage,
     calculateMemoryUsage,
     formatBinaryBytes,
@@ -25,6 +26,13 @@ test('selects the supported BoxLayout property even when old Shell has the Clutt
 test('calculates CPU usage from deltas', () => {
     assert.equal(calculateCpuUsage({idle: 100, total: 200}, {idle: 125, total: 300}), 75);
     assert.equal(calculateCpuUsage(null, {idle: 1, total: 2}), null);
+});
+
+test('rate counters recover from resets, missing samples and invalid elapsed time', () => {
+    assert.equal(counterRate(100, 300, 2), 100);
+    assert.equal(counterRate(300, 100, 2), 0);
+    assert.equal(counterRate(null, 100, 2), 0);
+    assert.equal(counterRate(100, 200, 0), 0);
 });
 
 test('disk totals exclude RAID, device mapper, zram and partitions over physical members', () => {

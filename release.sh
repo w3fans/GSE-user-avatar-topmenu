@@ -99,9 +99,10 @@ git add \
     metric-*-symbolic.svg
 git commit -m "Release ${tag}"
 
+uuid="$(node -p "JSON.parse(require('fs').readFileSync('metadata.json')).uuid")"
+if [[ -f .codex/build-personal-ram.sh ]]; then
 chmod +x .codex/build-personal-ram.sh
 .codex/build-personal-ram.sh
-uuid="$(node -p "JSON.parse(require('fs').readFileSync('metadata.json')).uuid")"
 personal_zip="dist/${uuid}-${su_tag}.shell-extension.zip"
 [[ -f "$personal_zip" ]] || {
     echo "Personal artifact missing: $personal_zip" >&2
@@ -128,6 +129,7 @@ git worktree add --detach "$worktree" HEAD
     git tag -a "$su_tag" -m "$(node tools/release-notes.mjs "$su_tag")"
     GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$su_tag"
 )
+fi
 
 wait_for_release_asset() {
     local release_tag="$1"
@@ -145,6 +147,7 @@ wait_for_release_asset() {
     return 1
 }
 
+if [[ -f .codex/build-personal-ram.sh ]]; then
 wait_for_release_asset "$su_tag"
 
 previous_su="$(git tag --list 'v*su' --sort=-version:refname | grep -Fxv "$su_tag" | head -n1 || true)"
@@ -153,10 +156,15 @@ if [[ -n "$previous_su" ]]; then
         git push origin ":refs/tags/${previous_su}" || true
     git tag -d "$previous_su"
 fi
+fi
 
 git tag -a "$tag" -m "$(node tools/release-notes.mjs "$tag")"
 GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin main
 GIT_SSH_COMMAND='ssh -p 443 -o Hostname=ssh.github.com' git push origin "$tag"
 wait_for_release_asset "$tag"
 
-echo "Released $su_tag followed by $tag"
+if [[ -f .codex/build-personal-ram.sh ]]; then
+    echo "Released $su_tag followed by $tag"
+else
+    echo "Released $tag (public build; no local personal builder configured)"
+fi

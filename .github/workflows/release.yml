@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -60,7 +60,7 @@ jobs:
         run: node tools/release-notes.mjs '${{ steps.meta.outputs.version_tag }}' > dist/release-notes.md
 
       - name: Create or update GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.meta.outputs.version_tag }}
           name: ${{ steps.meta.outputs.version_tag }}
@@ -72,7 +72,7 @@ jobs:
           generate_release_notes: false
 
       - name: Fill historical release notes from changelog
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const fs = require('fs');
@@ -97,7 +97,7 @@ jobs:
 
       - name: Retire older personal releases
         if: endsWith(github.ref_name, 'su')
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const releases = await github.paginate(github.rest.repos.listReleases, {

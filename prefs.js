@@ -204,6 +204,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             model: Gtk.StringList.new([_('Physical devices'), _('Aggregate endpoints')]),
             selected: settings.get_string('network-mode') === 'aggregate' ? 1 : 0});
         networkMode.connect('notify::selected', () => settings.set_string('network-mode', networkMode.selected ? 'aggregate' : 'physical'));
+        settings.connect('changed::network-mode', () => { networkMode.selected = settings.get_string('network-mode') === 'aggregate' ? 1 : 0; });
         networkGroup.add(networkMode);
         loadsPage.add(networkGroup);
 
@@ -582,6 +583,10 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         row.connect('notify::selected', widget => {
             settings.set_string(key, choices[widget.selected]?.id ?? 'auto');
+        });
+        settings.connect(`changed::${key}`, () => {
+            const index = choices.findIndex(choice => choice.id === settings.get_string(key));
+            if (index >= 0 && row.selected !== index) row.selected = index;
         });
         group.add(row);
     }
