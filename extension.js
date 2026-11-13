@@ -438,7 +438,7 @@ function getGpuMetrics(type, previousStat = null, selected = 'auto', nvidiaIndex
     if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
         const nvidia = getNvidiaMetrics(nvidiaIndex);
 
-        if (!nvidia && nvidiaIndex > 0)
+        if (!nvidia && nvidiaIndex > 0 && (selectedDevice?.vendor === '0x10de' || nvidiaMetricsCache.values?.length))
             return null;
 
         if (nvidia) {
@@ -584,7 +584,7 @@ function getGpuTemperature(type, selected = 'auto', nvidiaIndex = 0) {
     const selectedDevice = getGpuByType(type, selected);
     if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
         const nvidia = getNvidiaMetrics(nvidiaIndex);
-        if (!nvidia && nvidiaIndex > 0)
+        if (!nvidia && nvidiaIndex > 0 && (selectedDevice?.vendor === '0x10de' || nvidiaMetricsCache.values?.length))
             return {temp: null, sensor: `NVIDIA GPU ${nvidiaIndex} unavailable`};
 
         if (nvidia && !Number.isNaN(nvidia.temp))
@@ -603,7 +603,7 @@ function getGpuDescription(type, selected = 'auto', nvidiaIndex = 0) {
     const selectedDevice = getGpuByType(type, selected);
     if (type === 'dgpu' && (selected === 'auto' || selectedDevice?.vendor === '0x10de')) {
         const nvidia = getNvidiaMetrics(nvidiaIndex);
-        if (!nvidia && nvidiaIndex > 0)
+        if (!nvidia && nvidiaIndex > 0 && (selectedDevice?.vendor === '0x10de' || nvidiaMetricsCache.values?.length))
             return `NVIDIA GPU ${nvidiaIndex} unavailable`;
         if (nvidia?.name)
             return nvidia.name;

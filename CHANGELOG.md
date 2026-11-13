@@ -2,6 +2,7 @@
 
 ## 0.8.11
 
+- Includes the full 0.8.10 lifecycle, rendering, autohide, preferences and stable release remediation
 - Close the remaining invalid-NVIDIA-index fallback in temperatures and descriptions
 - Extract Preferences translations directly with gettext keywords instead of a regex-generated intermediate file
 
