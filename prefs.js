@@ -619,6 +619,26 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             catch (error) { return `Unavailable: ${error.message}`; }
         };
         const sources = [];
+        try {
+            const monitors = Gio.File.new_for_path('/sys/class/hwmon').enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+            let device;
+            while ((device = monitors.next_file(null))) {
+                const base = `/sys/class/hwmon/${device.get_name()}`;
+                const files = Gio.File.new_for_path(base).enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+                let file;
+                while ((file = files.next_file(null))) {
+                    if (!/^temp\d+_input$/.test(file.get_name())) continue;
+                    const path = `${base}/${file.get_name()}`;
+                    const value = read(path);
+                    sources.push([`${read(`${base}/name`)}: ${file.get_name()}`,
+                        `${path}: ${Number.isFinite(Number(value)) ? `${Number(value) / 1000} °C` : value}`]);
+                }
+                files.close(null);
+            }
+            monitors.close(null);
+        } catch (error) {
+            sources.push(['Sensor access', error.message]);
+        }
         for (const choice of this._getGpuChoices().slice(1)) {
             const base = `/sys/class/drm/${choice.id}/device`;
             sources.push([choice.id, `${base}; vendor ${read(`${base}/vendor`)}; device ${read(`${base}/device`)}`]);
