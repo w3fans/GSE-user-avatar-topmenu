@@ -295,7 +295,7 @@ function getMemoryHardwareInfo(cancellable = null) {
     if (!memoryHardwareCache.pending &&
         (!memoryHardwareCache.timestamp || now - memoryHardwareCache.timestamp >= 60000)) {
         memoryHardwareCache.pending = true;
-        runCommandAsync(['dmidecode', '--type', '17'], {timeoutMs: 3000, cancellable})
+        runCommandAsync(['sudo', '-n', 'dmidecode', '--type', '17'], {timeoutMs: 3000, cancellable})
             .then(dmi => {
                 if (scope !== ioScope) return;
                 const dmiModules = parseDmiMemory(dmi);
