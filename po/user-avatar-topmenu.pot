@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: user-avatar-topmenu 0.8.10\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-13 18:06+0100\n"
+"POT-Creation-Date: 2026-11-13 18:11+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -233,40 +233,82 @@ msgstr ""
 msgid "Usage polling interval"
 msgstr ""
 
+#: prefs.js:174
+msgid "Seconds between CPU, memory, swap, and GPU usage updates."
+msgstr ""
+
 #: prefs.js:175
 msgid "CPU usage"
+msgstr ""
+
+#: prefs.js:175
+msgid "Shows CPU load as a percentage column."
 msgstr ""
 
 #: prefs.js:176
 msgid "Memory usage"
 msgstr ""
 
+#: prefs.js:176
+msgid "Shows memory utilization with used and total memory in the tooltip."
+msgstr ""
+
 #: prefs.js:177
 msgid "Swap usage"
+msgstr ""
+
+#: prefs.js:177
+msgid "Shows swap utilization when swap is configured."
 msgstr ""
 
 #: prefs.js:178
 msgid "Integrated GPU usage"
 msgstr ""
 
+#: prefs.js:178
+msgid "Shows iGPU usage and memory details when exposed by the driver."
+msgstr ""
+
 #: prefs.js:179
 msgid "Discrete GPU usage"
+msgstr ""
+
+#: prefs.js:179
+msgid "Shows dGPU usage and memory details when exposed by the driver."
 msgstr ""
 
 #: prefs.js:180
 msgid "Network throughput"
 msgstr ""
 
+#: prefs.js:180
+msgid "Shows aggregate download speed with upload speed in the tooltip."
+msgstr ""
+
 #: prefs.js:181
 msgid "Disk activity"
+msgstr ""
+
+#: prefs.js:181
+msgid ""
+"Shows aggregate physical-disk read speed with write speed in the tooltip."
 msgstr ""
 
 #: prefs.js:182
 msgid "Use colored usage icons"
 msgstr ""
 
+#: prefs.js:182
+msgid ""
+"Disable this to show usage icons and bars in the default white panel color."
+msgstr ""
+
 #: prefs.js:184
 msgid "Compact metrics"
+msgstr ""
+
+#: prefs.js:184
+msgid "Reduce panel spacing when many metrics are enabled."
 msgstr ""
 
 #: prefs.js:188
@@ -289,6 +331,11 @@ msgstr ""
 
 #: prefs.js:194
 msgid "NVIDIA GPU index"
+msgstr ""
+
+#: prefs.js:194
+msgid ""
+"Zero-based nvidia-smi device index for systems with multiple NVIDIA GPUs."
 msgstr ""
 
 #: prefs.js:198
@@ -335,12 +382,24 @@ msgstr ""
 msgid "Pause while locked"
 msgstr ""
 
+#: prefs.js:215
+msgid "Avoids unnecessary hardware polling on the lock screen."
+msgstr ""
+
 #: prefs.js:216
 msgid "Reduce polling on battery"
 msgstr ""
 
+#: prefs.js:216
+msgid "Uses a longer interval while UPower reports battery operation."
+msgstr ""
+
 #: prefs.js:217
 msgid "Battery interval multiplier"
+msgstr ""
+
+#: prefs.js:217
+msgid "Multiplier applied to normal metric polling intervals."
 msgstr ""
 
 #: prefs.js:219
@@ -376,6 +435,10 @@ msgstr ""
 msgid "Temperature polling interval"
 msgstr ""
 
+#: prefs.js:248
+msgid "Seconds between CPU and GPU temperature updates."
+msgstr ""
+
 #: prefs.js:250
 msgid "Temperature unit"
 msgstr ""
@@ -396,28 +459,58 @@ msgstr ""
 msgid "Show decimal values"
 msgstr ""
 
+#: prefs.js:259
+msgid "Shows one decimal place for temperatures when the sensor provides it."
+msgstr ""
+
 #: prefs.js:260
 msgid "CPU temperature"
+msgstr ""
+
+#: prefs.js:260
+msgid "Shows the CPU package temperature when available."
 msgstr ""
 
 #: prefs.js:261
 msgid "Integrated GPU temperature"
 msgstr ""
 
+#: prefs.js:261
+msgid "Shows iGPU temperature when available."
+msgstr ""
+
 #: prefs.js:262
 msgid "Discrete GPU temperature"
+msgstr ""
+
+#: prefs.js:262
+msgid "Shows dGPU temperature when available."
 msgstr ""
 
 #: prefs.js:263
 msgid "Use colored temperature icons"
 msgstr ""
 
+#: prefs.js:263
+msgid ""
+"Disable this to show temperature icons and values in the default white panel "
+"color."
+msgstr ""
+
 #: prefs.js:264
 msgid "Warning threshold"
 msgstr ""
 
+#: prefs.js:264
+msgid "Temperature in Celsius where the orange warning color begins."
+msgstr ""
+
 #: prefs.js:265
 msgid "Critical threshold"
+msgstr ""
+
+#: prefs.js:265
+msgid "Temperature in Celsius where the red critical color begins."
 msgstr ""
 
 #: prefs.js:278 prefs.js:282
@@ -438,8 +531,16 @@ msgid ""
 "user submenu."
 msgstr ""
 
+#: prefs.js:296
+msgid "Keeps the session awake while the focused app is fullscreen."
+msgstr ""
+
 #: prefs.js:297
 msgid "Automatic while media is playing"
+msgstr ""
+
+#: prefs.js:297
+msgid "Keeps the session awake while an MPRIS-compatible app reports playback."
 msgstr ""
 
 #: prefs.js:301
@@ -457,10 +558,6 @@ msgstr ""
 
 #: prefs.js:308
 msgid "Duration used whenever the timer is started."
-msgstr ""
-
-#: prefs.js:316
-msgid "Start keep-awake timer"
 msgstr ""
 
 #: prefs.js:324

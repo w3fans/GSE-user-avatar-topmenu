@@ -171,17 +171,17 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('loads-position', row.selected === 1 ? 'right' : 'left');
         });
         loadsGroup.add(loadsPositionRow);
-        this._addPollingIntervalRow(loadsGroup, settings, 'loads-refresh-seconds', 'Usage polling interval', 'Seconds between CPU, memory, swap, and GPU usage updates.', 30);
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-cpu', 'CPU usage', 'Shows CPU load as a percentage column.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-mem', 'Memory usage', 'Shows memory utilization with used and total memory in the tooltip.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', 'Swap usage', 'Shows swap utilization when swap is configured.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-igpu', 'Integrated GPU usage', 'Shows iGPU usage and memory details when exposed by the driver.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-dgpu', 'Discrete GPU usage', 'Shows dGPU usage and memory details when exposed by the driver.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-network', 'Network throughput', 'Shows aggregate download speed with upload speed in the tooltip.');
-        this._addBoundSwitch(loadsGroup, settings, 'show-load-disk', 'Disk activity', 'Shows aggregate physical-disk read speed with write speed in the tooltip.');
-        this._addBoundSwitch(loadsGroup, settings, 'use-load-colors', 'Use colored usage icons', 'Disable this to show usage icons and bars in the default white panel color.');
+        this._addPollingIntervalRow(loadsGroup, settings, 'loads-refresh-seconds', this.gettext('Usage polling interval'), this.gettext('Seconds between CPU, memory, swap, and GPU usage updates.'), 30);
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-cpu', this.gettext('CPU usage'), this.gettext('Shows CPU load as a percentage column.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-mem', this.gettext('Memory usage'), this.gettext('Shows memory utilization with used and total memory in the tooltip.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-swap', this.gettext('Swap usage'), this.gettext('Shows swap utilization when swap is configured.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-igpu', this.gettext('Integrated GPU usage'), this.gettext('Shows iGPU usage and memory details when exposed by the driver.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-dgpu', this.gettext('Discrete GPU usage'), this.gettext('Shows dGPU usage and memory details when exposed by the driver.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-network', this.gettext('Network throughput'), this.gettext('Shows aggregate download speed with upload speed in the tooltip.'));
+        this._addBoundSwitch(loadsGroup, settings, 'show-load-disk', this.gettext('Disk activity'), this.gettext('Shows aggregate physical-disk read speed with write speed in the tooltip.'));
+        this._addBoundSwitch(loadsGroup, settings, 'use-load-colors', this.gettext('Use colored usage icons'), this.gettext('Disable this to show usage icons and bars in the default white panel color.'));
         this._addOrderRows(loadsGroup, settings, 'metric-order', ['cpu', 'mem', 'swap', 'igpu', 'dgpu', 'network', 'disk']);
-        this._addBoundSwitch(loadsGroup, settings, 'compact-metrics', 'Compact metrics', 'Reduce panel spacing when many metrics are enabled.');
+        this._addBoundSwitch(loadsGroup, settings, 'compact-metrics', this.gettext('Compact metrics'), this.gettext('Reduce panel spacing when many metrics are enabled.'));
         loadsPage.add(loadsGroup);
 
         const deviceGroup = new Adw.PreferencesGroup({
@@ -189,16 +189,16 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             description: this.gettext('Override automatic GPU classification when a hybrid or AMD-only system is detected incorrectly.'),
         });
         const gpuChoices = this._getGpuChoices();
-        this._addDeviceRow(deviceGroup, settings, 'igpu-device', 'Integrated GPU', gpuChoices);
-        this._addDeviceRow(deviceGroup, settings, 'dgpu-device', 'Discrete GPU', gpuChoices);
-        this._addPollingIntervalRow(deviceGroup, settings, 'nvidia-index', 'NVIDIA GPU index', 'Zero-based nvidia-smi device index for systems with multiple NVIDIA GPUs.', 15, 0);
+        this._addDeviceRow(deviceGroup, settings, 'igpu-device', this.gettext('Integrated GPU'), gpuChoices);
+        this._addDeviceRow(deviceGroup, settings, 'dgpu-device', this.gettext('Discrete GPU'), gpuChoices);
+        this._addPollingIntervalRow(deviceGroup, settings, 'nvidia-index', this.gettext('NVIDIA GPU index'), this.gettext('Zero-based nvidia-smi device index for systems with multiple NVIDIA GPUs.'), 15, 0);
         loadsPage.add(deviceGroup);
 
         const networkGroup = new Adw.PreferencesGroup({
             title: this.gettext('Network Device'),
             description: this.gettext('Automatic aggregates physical network interfaces and avoids double-counting virtual bridges.'),
         });
-        this._addDeviceRow(networkGroup, settings, 'network-interface', 'Network interface', this._getNetworkChoices());
+        this._addDeviceRow(networkGroup, settings, 'network-interface', this.gettext('Network interface'), this._getNetworkChoices());
         const networkMode = new Adw.ComboRow({title: _('Automatic network mode'),
             subtitle: _('Physical devices, or independent bridge/VLAN endpoints. Select a VPN interface explicitly to measure VPN traffic.'),
             model: Gtk.StringList.new([_('Physical devices'), _('Aggregate endpoints')]),
@@ -212,9 +212,9 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             title: this.gettext('Performance and Power'),
             description: this.gettext('Polling stops while locked and slows down on battery by default.'),
         });
-        this._addBoundSwitch(performanceGroup, settings, 'pause-metrics-when-locked', 'Pause while locked', 'Avoids unnecessary hardware polling on the lock screen.');
-        this._addBoundSwitch(performanceGroup, settings, 'adaptive-refresh-on-battery', 'Reduce polling on battery', 'Uses a longer interval while UPower reports battery operation.');
-        this._addPollingIntervalRow(performanceGroup, settings, 'battery-refresh-multiplier', 'Battery interval multiplier', 'Multiplier applied to normal metric polling intervals.', 10, 2);
+        this._addBoundSwitch(performanceGroup, settings, 'pause-metrics-when-locked', this.gettext('Pause while locked'), this.gettext('Avoids unnecessary hardware polling on the lock screen.'));
+        this._addBoundSwitch(performanceGroup, settings, 'adaptive-refresh-on-battery', this.gettext('Reduce polling on battery'), this.gettext('Uses a longer interval while UPower reports battery operation.'));
+        this._addPollingIntervalRow(performanceGroup, settings, 'battery-refresh-multiplier', this.gettext('Battery interval multiplier'), this.gettext('Multiplier applied to normal metric polling intervals.'), 10, 2);
         const clickActionRow = new Adw.ComboRow({
             title: this.gettext('Metric click action'),
             subtitle: this.gettext('Choose what happens when a metric is clicked or keyboard-activated.'),
@@ -245,7 +245,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('temps-position', row.selected === 1 ? 'right' : 'left');
         });
         tempsGroup.add(tempsPositionRow);
-        this._addPollingIntervalRow(tempsGroup, settings, 'temps-refresh-seconds', 'Temperature polling interval', 'Seconds between CPU and GPU temperature updates.', 60);
+        this._addPollingIntervalRow(tempsGroup, settings, 'temps-refresh-seconds', this.gettext('Temperature polling interval'), this.gettext('Seconds between CPU and GPU temperature updates.'), 60);
         const temperatureUnitRow = new Adw.ComboRow({
             title: this.gettext('Temperature unit'),
             subtitle: this.gettext('Choose Celsius or Fahrenheit for panel values and tooltips.'),
@@ -256,13 +256,13 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             settings.set_string('temperature-unit', row.selected === 1 ? 'fahrenheit' : 'celsius');
         });
         tempsGroup.add(temperatureUnitRow);
-        this._addBoundSwitch(tempsGroup, settings, 'temperature-decimals', 'Show decimal values', 'Shows one decimal place for temperatures when the sensor provides it.');
-        this._addBoundSwitch(tempsGroup, settings, 'show-temp-cpu', 'CPU temperature', 'Shows the CPU package temperature when available.');
-        this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', 'Integrated GPU temperature', 'Shows iGPU temperature when available.');
-        this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', 'Discrete GPU temperature', 'Shows dGPU temperature when available.');
-        this._addBoundSwitch(tempsGroup, settings, 'use-temp-colors', 'Use colored temperature icons', 'Disable this to show temperature icons and values in the default white panel color.');
-        const warningSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-warning', 'Warning threshold', 'Temperature in Celsius where the orange warning color begins.', 100, 30);
-        const criticalSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-critical', 'Critical threshold', 'Temperature in Celsius where the red critical color begins.', 120, 40);
+        this._addBoundSwitch(tempsGroup, settings, 'temperature-decimals', this.gettext('Show decimal values'), this.gettext('Shows one decimal place for temperatures when the sensor provides it.'));
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-cpu', this.gettext('CPU temperature'), this.gettext('Shows the CPU package temperature when available.'));
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-igpu', this.gettext('Integrated GPU temperature'), this.gettext('Shows iGPU temperature when available.'));
+        this._addBoundSwitch(tempsGroup, settings, 'show-temp-dgpu', this.gettext('Discrete GPU temperature'), this.gettext('Shows dGPU temperature when available.'));
+        this._addBoundSwitch(tempsGroup, settings, 'use-temp-colors', this.gettext('Use colored temperature icons'), this.gettext('Disable this to show temperature icons and values in the default white panel color.'));
+        const warningSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-warning', this.gettext('Warning threshold'), this.gettext('Temperature in Celsius where the orange warning color begins.'), 100, 30);
+        const criticalSpin = this._addPollingIntervalRow(tempsGroup, settings, 'temp-critical', this.gettext('Critical threshold'), this.gettext('Temperature in Celsius where the red critical color begins.'), 120, 40);
         warningSpin.connect('value-changed', () => {
             if (warningSpin.get_value_as_int() >= criticalSpin.get_value_as_int())
                 criticalSpin.set_value(Math.min(120, warningSpin.get_value_as_int() + 5));
@@ -293,8 +293,8 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
             Gio.SettingsBindFlags.DEFAULT
         );
         awakeGroup.add(keepAwakeRow);
-        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-fullscreen', 'Automatic for fullscreen apps', 'Keeps the session awake while the focused app is fullscreen.');
-        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-media', 'Automatic while media is playing', 'Keeps the session awake while an MPRIS-compatible app reports playback.');
+        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-fullscreen', this.gettext('Automatic for fullscreen apps'), this.gettext('Keeps the session awake while the focused app is fullscreen.'));
+        this._addBoundSwitch(awakeGroup, settings, 'keep-awake-media', this.gettext('Automatic while media is playing'), this.gettext('Keeps the session awake while an MPRIS-compatible app reports playback.'));
         awakePage.add(awakeGroup);
 
         const timerGroup = new Adw.PreferencesGroup({
