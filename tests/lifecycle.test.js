@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {InhibitorController} from '../lib/inhibitor.js';
+import {shouldHidePanel} from '../lib/logic.js';
 
 test('inhibitor retains failed release cookie, retries, and serializes rapid toggles', async () => {
     let acquired = 0, released = 0, fail = true;
@@ -77,6 +78,63 @@ test('autohide preserves chrome ownership and restores original translation and 
     hide.call(owner, true); panel.translation_y = 9; hide.call(owner, false);
     assert.equal(panel.translation_y, 9);
     assert.equal(panel.visible, true);
+});
+
+test('fullscreen autohide follows focus and restores Shell tracking when turned off', () => {
+    const source = fs.readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
+    const panel = {visible: false, height: 30, show() { this.visible = true; }};
+    const primary = {inFullscreen: true, x: 0, y: 0, width: 1920};
+    const tracked = {actor: panel, trackFullscreen: true, affectsStruts: true};
+    const layoutManager = {
+        panelBox: panel, primaryMonitor: primary, _trackedActors: [tracked],
+        _updateActorVisibility(entry) {
+            if (entry.trackFullscreen)
+                entry.actor.visible = !primary.inFullscreen;
+        },
+    };
+    const window = (fullscreen, monitor) => ({fullscreen, get_monitor: () => monitor});
+    const display = {focus_window: window(true, 0), get_primary_monitor: () => 0};
+    const settings = {'hide-topbar-fullscreen': true};
+    const owner = {
+        _focusWindow: display.focus_window, // Cached signal owner must not decide visibility.
+        _settings: {get_boolean: key => settings[key] ?? false},
+        _setPanelAutohide(hidden) { this.hidden = hidden; },
+    };
+    for (const [name, next] of [
+        ['_syncFullscreenPanelVisibility', '_syncNativePanelFullscreen'],
+        ['_syncNativePanelFullscreen', '_setPanelAutohide'],
+    ]) {
+        const body = source.slice(source.indexOf(`    ${name}(`), source.indexOf(`    ${next}(`));
+        owner[name] = new Function('Main', 'global', 'shouldHidePanel',
+            `return ({${body}}).${name};`)({layoutManager}, {display}, shouldHidePanel);
+    }
+    const sync = () => owner._syncFullscreenPanelVisibility();
+    sync();
+    assert.equal(owner.hidden, true);
+    assert.equal(tracked.trackFullscreen, false);
+    assert.equal(tracked.affectsStruts, true);
+
+    display.focus_window = window(false, 0);
+    layoutManager._updateActorVisibility(tracked);
+    sync();
+    assert.equal(owner.hidden, false);
+    assert.equal(panel.visible, true);
+
+    display.focus_window = window(true, 1);
+    sync();
+    assert.equal(owner.hidden, false);
+    settings['hide-topbar-fullscreen-all-monitors'] = true;
+    sync();
+    assert.equal(owner.hidden, true);
+    display.focus_window = null;
+    sync();
+    assert.equal(owner.hidden, false);
+
+    settings['hide-topbar-fullscreen'] = false;
+    sync();
+    assert.equal(tracked.trackFullscreen, true);
+    assert.equal(panel.visible, false); // The default Shell policy is back.
+    assert.equal(owner.hidden, false);
 });
 
 test('invalid NVIDIA index never falls through to a different DRM GPU', () => {

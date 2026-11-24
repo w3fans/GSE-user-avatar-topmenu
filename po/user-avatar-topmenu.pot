@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: user-avatar-topmenu 0.8.12\n"
+"Project-Id-Version: user-avatar-topmenu 0.8.13\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-13 18:12+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -569,7 +569,9 @@ msgid "Choose when the GNOME top bar should hide automatically."
 msgstr ""
 
 #: prefs.js:329
-msgid "Hide the top bar whenever the focused app is fullscreen."
+msgid ""
+"Hide the top bar when the focused window is fullscreen on the primary "
+"monitor."
 msgstr ""
 
 #: prefs.js:339

@@ -326,7 +326,7 @@ export default class UsernameAvatarPreferences extends ExtensionPreferences {
         });
         const hideInFullscreenRow = new Adw.SwitchRow({
             title: this.gettext('Hide in fullscreen'),
-            subtitle: this.gettext('Hide the top bar whenever the focused app is fullscreen.'),
+            subtitle: this.gettext('Hide the top bar when the focused window is fullscreen on the primary monitor.'),
         });
         settings.bind(
             'hide-topbar-fullscreen',

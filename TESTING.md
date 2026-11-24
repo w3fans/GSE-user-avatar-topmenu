@@ -50,7 +50,12 @@ GNOME version (45 through 51):
 4. Exercise every keep-awake source and confirm the persisted timer expires at
    its original deadline after a Shell reload.
 5. Exercise fullscreen, maximized, touching-edge, multi-monitor autohide, and
-   top-edge reveal.
+   top-edge reveal. With only fullscreen autohide enabled, leave a fullscreen
+   window on the primary display and switch focus to a normal window without
+   exiting fullscreen. Confirm that the panel returns. A focused fullscreen
+   window on a secondary display should hide the panel only with the
+   all-monitors option enabled. Turn off fullscreen autohide and verify that
+   GNOME's own fullscreen visibility policy resumes.
 6. Enable each available metric, hover and keyboard-focus it, verify values
    against system tools, select alternate devices, and test battery/lock polling.
 7. Inspect the Shell journal for errors during operation and shutdown.

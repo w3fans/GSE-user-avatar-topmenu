@@ -1927,6 +1927,7 @@ export default class UsernameAvatarExtension extends Extension {
         this._idleInhibitor = null;
         this._destroyPanelRevealActor();
         this._setPanelAutohide(false);
+        this._syncNativePanelFullscreen(false);
         this._removeMetricsButtons();
         this._removeQuickSettingsMenu();
         this._button?.destroy();
@@ -2204,20 +2205,23 @@ export default class UsernameAvatarExtension extends Extension {
 
     _syncFullscreenPanelVisibility() {
         const primary = Main.layoutManager.primaryMonitor;
+        const fullscreen = this._settings?.get_boolean('hide-topbar-fullscreen');
+        this._syncNativePanelFullscreen(Boolean(fullscreen && primary?.inFullscreen));
         if (!primary || !Main.layoutManager.panelBox) {
             this._setPanelAutohide(false);
             return;
         }
-        const frameRect = this._focusWindow?.get_frame_rect?.();
+        const focused = global.display.focus_window;
+        const frameRect = focused?.get_frame_rect?.();
         const shouldHide = shouldHidePanel({
-            fullscreen: this._settings?.get_boolean('hide-topbar-fullscreen'),
+            fullscreen,
             fullscreenAllMonitors: this._settings?.get_boolean('hide-topbar-fullscreen-all-monitors'),
             maximized: this._settings?.get_boolean('hide-topbar-maximized'),
             touching: this._settings?.get_boolean('hide-topbar-touching'),
-        }, this._focusWindow ? {
-            fullscreen: Boolean(this._focusWindow.fullscreen),
-            maximized: this._focusWindow.is_maximized?.() ?? false,
-            monitor: this._focusWindow.get_monitor?.(),
+        }, focused ? {
+            fullscreen: Boolean(focused.fullscreen),
+            maximized: focused.is_maximized?.() ?? false,
+            monitor: focused.get_monitor?.(),
             y: frameRect?.y ?? Number.MAX_SAFE_INTEGER,
             x: frameRect?.x,
             width: frameRect?.width,
@@ -2230,6 +2234,28 @@ export default class UsernameAvatarExtension extends Extension {
         });
 
         this._setPanelAutohide(shouldHide);
+    }
+
+    _syncNativePanelFullscreen(override) {
+        const layout = Main.layoutManager;
+        const tracked = layout._trackedActors?.find(entry => entry.actor === layout.panelBox);
+        if (this._panelFullscreenTracking &&
+            (!override || this._panelFullscreenTracking !== tracked)) {
+            const owned = this._panelFullscreenTracking;
+            this._panelFullscreenTracking = null;
+            owned.trackFullscreen = true;
+            if (owned === tracked)
+                layout._updateActorVisibility(owned);
+        }
+        if (!override || tracked?.trackFullscreen !== true ||
+            typeof layout._updateActorVisibility !== 'function')
+            return;
+
+        // Shell tracks fullscreen per monitor, independently of window focus.
+        // Temporarily suspend just that flag, not chrome registration or struts.
+        this._panelFullscreenTracking = tracked;
+        tracked.trackFullscreen = false;
+        layout.panelBox.show();
     }
 
     _setPanelAutohide(hidden) {

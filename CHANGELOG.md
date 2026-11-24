@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.13
+
+- Restore the top bar when focus leaves fullscreen, even if GNOME Shell still considers the primary monitor fullscreen. The all-monitors option still extends the rule to focused fullscreen windows on secondary monitors.
+
 ## 0.8.12
 
 - Includes the full 0.8.10–0.8.11 audit remediation
